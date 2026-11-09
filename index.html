@@ -435,6 +435,7 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
       <button class="btn" id="v3-walls" type="button" aria-pressed="true">Walls</button>
       <button class="btn" id="v3-rot" type="button" aria-pressed="false">Auto-rotate</button>
       <button class="btn" id="v3-focus" type="button">Focus alarm</button>
+      <button class="btn" id="v3-valve" type="button">Valve station</button>
       <button class="btn" id="v3-reset" type="button">Reset view</button>
     </div>
   </section>
@@ -1109,7 +1110,7 @@ function f3Describe(d){
 }
 function f3Sync(c){
   const rank=c.top?TYPE[c.top.type].rank:0;
-  F3.update({C:cfg(),on:S.on,outState:c.outState,inState:c.inState,sil:S.sil,ack:S.ack,rank,
+  F3.update({C:cfg(),on:S.on,outState:c.outState,inState:c.inState,sil:S.sil,ack:S.ack,rank,release:c.matched.some(r=>r.type==='fire'&&r.when.some(w=>w.groups.includes('pa'))),
     leds:{pre:c.matched.some(r=>r.type==='pre'),fire:rank===3,sup:c.matched.some(r=>r.type==='sup'),sil:rank>1&&S.sil},
     scr:{h:$('#scr-h').textContent,c:$('#scr-c').textContent,l:c.pts.slice(0,5).map(x=>x.p.addr+' '+x.p.id)}});
   [['ack','k-ack'],['sil','k-sil'],['reset','k-reset']].forEach(([k,s])=>{const a=$('#'+s),b=$('#k3-'+k);if(!a||!b)return;
@@ -1118,7 +1119,7 @@ function f3Sync(c){
 }
 function f3Init(){
   if(F3)return Promise.resolve(F3);
-  if(!f3Pending)f3Pending=import('./fire3d.js?v=1').then(m=>{
+  if(!f3Pending)f3Pending=import('./fire3d.js?v=2').then(m=>{
     m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;const l=$('#v3-load');if(l)l.remove();return m;
   }).catch(e=>{f3Pending=null;const l=$('#v3-load');if(l)l.textContent='3D view could not load ('+((e&&e.message)||e)+'). Check that fire3d.js is uploaded next to index.html and that this browser supports WebGL.';return null});
   return f3Pending;
@@ -1139,6 +1140,7 @@ $('#v3-floors').addEventListener('click',e=>{const b=e.target.closest('[data-fl]
 $('#v3-walls').addEventListener('click',e=>{const b=e.currentTarget,v=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',v);F3&&F3.setWalls(v)});
 $('#v3-rot').addEventListener('click',e=>{const b=e.currentTarget,v=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',v);F3&&F3.setAuto(v)});
 $('#v3-focus').addEventListener('click',()=>{if(F3&&!F3.focusAlarm())log('ok','3D VIEW · no device in alarm to focus on')});
+$('#v3-valve').addEventListener('click',()=>F3&&F3.focusValve());
 $('#v3-reset').addEventListener('click',()=>F3&&F3.resetView());
 
 renderLog();build();load();

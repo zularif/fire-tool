@@ -5,13 +5,14 @@ import {
   BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, CylinderGeometry, DoubleSide,
   EdgesGeometry, GridHelper, Group, HemisphereLight, DirectionalLight, LineBasicMaterial, LineSegments, MathUtils, Mesh,
   MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera, Points, Raycaster, RepeatWrapping, Scene, ShaderMaterial,
-  SphereGeometry, Sprite, SpriteMaterial, TorusGeometry, Vector2, Vector3, WebGLRenderer
+  CircleGeometry, SphereGeometry, Sprite, SpriteMaterial, TorusGeometry, Vector2, Vector3, WebGLRenderer
 } from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 
 const FH = 4, W = 36, D = 22;                       // floor height, building width (x), depth (z) in metres
 const COL = {fire: 0xff3b30, pre: 0xff9f0a, sup: 0xffc400};
 const TAU = Math.PI * 2;
+const SX = 23.5, SZ = 9.6, RX = 16.5, YC = 3.5;   // outdoor valve station origin, inside riser x, sprinkler pipe height above each floor
 
 let host, api, renderer, scene, camera, controls, tipEl, canvas;
 const rc = new Raycaster(), ndc = new Vector2();
@@ -49,7 +50,7 @@ function halo(size) {
 }
 function label(text, size = 1, parent, x = 0, y = 0, z = 0) {
   const c = document.createElement('canvas'); c.width = 320; c.height = 80;
-  const g = c.getContext('2d'); g.font = '700 38px Barlow,Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const g = c.getContext('2d'); let fs = 38; g.font = `700 ${fs}px Barlow,Arial,sans-serif`; const tw = g.measureText(text).width; if (tw > 290) { fs = Math.floor(fs * 290 / tw); g.font = `700 ${fs}px Barlow,Arial,sans-serif`; } g.textAlign = 'center'; g.textBaseline = 'middle';
   g.lineWidth = 7; g.strokeStyle = 'rgba(10,14,20,.75)'; g.strokeText(text, 160, 42); g.fillStyle = '#fff'; g.fillText(text, 160, 42);
   const s = new Sprite(new SpriteMaterial({map: new CanvasTexture(c), transparent: true, depthTest: false, depthWrite: false, opacity: .9}));
   s.scale.set(size * 4, size, 1); s.position.set(x, y, z); s.renderOrder = 15; if (parent) parent.add(s); return s;
@@ -65,13 +66,15 @@ function makeMats() {
   M.core = std(0x8fa3b8, {transparent: true, opacity: .26, depthWrite: false, side: DoubleSide});
   M.line = new LineBasicMaterial({color: 0x6b7a89, transparent: true, opacity: .6});
   M.red = std(0xd32f2f); M.white = std(0xf1f3f5); M.grey = std(0x8a949e); M.dgrey = std(0x4b5560); M.gold = std(0xd9a21b, {metalness: .5});
+  M.pipe = std(0xaab3bb, {metalness: .45, roughness: .45}); M.pipeD = std(0xaab3bb, {metalness: .45, roughness: .45});
+  M.conc = std(0xaeb6bd, {roughness: .95}); M.black = std(0x1d2126, {roughness: .6}); M.red2 = std(0xa82020); M.blue2 = std(0x1f5fb0);
   M.orange = std(0xf08a24); M.yellow = std(0xf6c026); M.blue = std(0x2b6cc4); M.green = std(0x2e9d4f);
 }
 function applyTheme() {
   const cs = getComputedStyle(host), g = n => cs.getPropertyValue(n).trim();
   const bg = new Color(g('--surface-2') || '#f4f6f8'), hsl = {}; bg.getHSL(hsl);
   dark = hsl.l < .4;
-  M.slab.color.set(dark ? 0x3a434d : 0xb8c2cc);
+  M.slab.color.set(dark ? 0x3a434d : 0xb8c2cc); M.conc.color.set(dark ? 0x3d464f : 0xaeb6bd);
   M.line.color.set(dark ? 0x9fb3c8 : 0x5f6f80); M.line.opacity = dark ? .55 : .6;
   M.glass.color.set(dark ? 0x5c8cc0 : 0x7aa6d6); M.wall.color.set(dark ? 0x6d88a6 : 0x9db4cc); M.core.color.set(dark ? 0x5f7690 : 0x8fa3b8);
   scene.userData.hemi.intensity = dark ? 1.05 : 1.25; scene.userData.grid.material.color.set(dark ? 0x37424d : 0xc3ccd5);
@@ -96,12 +99,12 @@ function buildBuilding() {
   });
   // lift shaft + riser
   const sh = box(4.6, 3 * FH, 5, M.core); sh.position.set(3.5, 1.5 * FH, -8); scene.add(sh); outline(sh, scene); walls.push(sh);
-  const rp = cyl(.12, 3 * FH, M.red, 12); rp.position.set(-3.6, 1.5 * FH, -10.6); scene.add(rp);
+  
   // roof parapet
   const par = box(W + .6, .5, D + .6, M.slab); par.position.y = .25; par.scale.set(1, 1, 1); floors[3].add(par); par.visible = false;
   const gr = new GridHelper(70, 35, 0x8a949e, 0xc3ccd5); gr.position.y = -.32; gr.material.transparent = true; gr.material.opacity = .5; scene.add(gr); scene.userData.grid = gr;
   // room / floor labels
-  label('FM200 ROOM', 1.5, floors[0], 12, .35, -7); label('PRE-ACTION VALVE ROOM', 1.5, floors[0], 14, .35, 8.4).scale.set(6.4, 1.6, 1);
+  label('FM200 ROOM', 1.5, floors[0], 12, .35, -7);
   label('LOBBY · FACP', 1.5, floors[0], -11, .35, 5); label('STAIR', 1.3, floors[0], -2, .35, -8.6); label('LIFT', 1.3, floors[0], 3.5, .35, -8);
   [['G', 0], ['L1', 1], ['L2', 2], ['ROOF', 3]].forEach(([t, i]) => label(t, 2.2, floors[i], -21, 1, 11.4));
 }
@@ -136,7 +139,7 @@ const SL = {
   smoke: [[-12, 3.75, 3], [-9, 7.75, -3], [6, 7.75, 7], [-6, 11.75, 4], [13, 11.75, 3], [-14, 3.75, -3], [0, 7.75, 3], [10, 7.75, -5]],
   heat: [[14, 11.75, -6], [-14, 7.75, 7], [0, 3.75, 8], [-12, 11.75, -4]],
   mcp: [[-17.8, 1.4, 4, Math.PI / 2], [-4.2, 5.4, -3.5, Math.PI / 2], [-4.2, 9.4, -3.5, Math.PI / 2], [17.8, 1.4, 6, -Math.PI / 2]],
-  valve: [[14, 1.2, 8, 0]], flow: [[-3.6, 5.2, -10.6, 0], [-3.6, 9.2, -10.6, 0]],
+  valve: [[SX + 1.15, 2.95, SZ + .95, 0]], flow: [[SX - 2.6, YC + .34, SZ, 0]],
   button: [[7.75, 1.4, -4.5, Math.PI / 2], [7.75, 1.4, -6, Math.PI / 2]],
   fmSmoke: [[12, 3.75, -6.5], [10, 3.75, -9]], fmHeat: [[14, 3.75, -8.5], [14, 3.75, -5]]
 };
@@ -162,11 +165,11 @@ function inShape(style) {
   } else if (style === 'button') {
     const b = box(.3, .3, .1, M.yellow); g.add(b); const c = cyl(.08, .06, M.red, 16); c.rotation.x = Math.PI / 2; c.position.z = .07; g.add(c); led.position.set(.1, .2, .06);
   } else if (style === 'valve') {
-    const p = cyl(.14, 2.4, M.red, 14); g.add(p); const v = box(.55, .45, .45, M.red); v.position.y = -.2; g.add(v);
-    const w = cyl(.2, .1, M.gold, 16); w.rotation.x = Math.PI / 2; w.position.set(0, .25, .3); g.add(w);
-    const ps = box(.34, .3, .26, M.blue); ps.position.set(.45, .5, 0); g.add(ps); led.position.set(.45, .72, 0);
+    const b = cyl(.15, .5, M.dgrey, 16); g.add(b); const cp = cyl(.17, .06, M.grey, 16); cp.position.y = .28; g.add(cp);
+    const bs = box(.34, .14, .3, M.dgrey); bs.position.y = -.3; g.add(bs); led.position.set(0, .38, 0);
   } else if (style === 'flow') {
-    const b = box(.32, .34, .28, M.blue); b.position.set(.28, 0, 0); g.add(b); led.position.set(.28, .24, 0);
+    const sd = cyl(.13, .08, M.grey, 14); sd.position.y = -.14; g.add(sd); const b = box(.36, .26, .3, M.red); g.add(b);
+    const dm = new Mesh(new SphereGeometry(.15, 14, 8, 0, TAU, 0, Math.PI / 2), M.red); dm.position.y = .13; g.add(dm); led.position.set(.2, .02, .16);
   } else { g.add(box(.3, .3, .3, M.grey)); led.position.y = .2; }
   g.add(led); return {g, led};
 }
@@ -175,9 +178,12 @@ function buildInputs(C) {
   C.inputs.forEach(grp => grp.points.forEach(p => {
     const style = styleOf(grp, p), fm = /fm ?200/i.test(grp.key + grp.name);
     const sl = fm && style === 'smoke' ? slot('fmSmoke') : fm && style === 'heat' ? slot('fmHeat') : slot(style);
-    const {g, led} = inShape(style), h = halo(style === 'valve' ? 3 : 2.2); g.add(h);
-    put(g, sl[0], sl[1], sl[2], sl[3] || 0, 1.9);
-    const pk = new Mesh(new SphereGeometry(.55, 8, 6), new MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false})); g.add(pk);
+    const {g, led} = inShape(style), h = halo(style === 'valve' ? 2.4 : 2.2); g.add(h);
+    put(g, sl[0], sl[1], sl[2], sl[3] || 0, style === 'valve' ? 1.3 : style === 'flow' ? 1.5 : 1.9);
+    const pm = new MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false});
+    const pk = style === 'valve' ? new Mesh(new SphereGeometry(1.3, 10, 8), pm) : new Mesh(new SphereGeometry(.55, 8, 6), pm);
+    if (style === 'valve') pk.position.set(-.58, -1.12, -.77);
+    g.add(pk);
     const dev = {kind: 'in', id: p.id, key: grp.key, style, led, h, g, acc: 0, wpos: new Vector3(), on: false};
     pk.userData.dev = dev; pickables.push(pk); IN.push(dev);
   }));
@@ -301,7 +307,7 @@ function mkOut(o, C) {
 }
 
 /* ---------------------------------------------------------------- particles */
-const N = 900; let PI = 0, pts, PA;
+const N = 1300; let PI = 0, pts, PA;
 function buildParticles() {
   const g = new BufferGeometry();
   PA = {pos: new Float32Array(N * 3), col: new Float32Array(N * 3), a: new Float32Array(N), s: new Float32Array(N), vel: new Float32Array(N * 3), age: new Float32Array(N), max: new Float32Array(N).fill(1), s0: new Float32Array(N), s1: new Float32Array(N), a0: new Float32Array(N), ty: new Uint8Array(N), top: new Float32Array(N), bot: new Float32Array(N)};
@@ -318,15 +324,17 @@ const PT = {
   water: {c: [.45, .72, 1], life: [.8, 1.3], s: [.12, .2], a: .8, v: [0, 0]},
   gas: {c: [.7, .93, 1], life: [4, 6], s: [.9, 1.6], a: .22, v: [0, .1]},
   airUp: {c: [.6, .78, .95], life: [1.4, 2], s: [.2, .4], a: .35, v: [2, 3]},
-  airDn: {c: [.6, .78, .95], life: [1.4, 2], s: [.2, .4], a: .35, v: [-3, -4]}
+  airDn: {c: [.6, .78, .95], life: [1.4, 2], s: [.2, .4], a: .35, v: [-3, -4]},
+  spray: {c: [.55, .78, 1], life: [.7, 1.1], s: [.2, .34], a: .9, v: [0, 0]}
 };
 function emit(type, x, y, z) {
   const T0 = PT[type], i = PI = (PI + 1) % N, r = Math.random, v = lerp(T0.v[0], T0.v[1], r());
   PA.pos.set([x, y, z], i * 3); PA.col.set(T0.c, i * 3); PA.age[i] = 0; PA.max[i] = lerp(T0.life[0], T0.life[1], r());
-  PA.s0[i] = T0.s[0]; PA.s1[i] = T0.s[1]; PA.a0[i] = T0.a; PA.ty[i] = type === 'smoke' ? 1 : type === 'water' ? 2 : type === 'gas' ? 3 : 0;
+  PA.s0[i] = T0.s[0]; PA.s1[i] = T0.s[1]; PA.a0[i] = T0.a; PA.ty[i] = type === 'smoke' ? 1 : (type === 'water' || type === 'spray') ? 2 : type === 'gas' ? 3 : 0;
   let vx = 0, vy = v, vz = 0;
   if (type === 'smoke') { vx = (r() - .5) * .3; vz = (r() - .5) * .3; }
   if (type === 'water') { vx = (r() - .5) * 1.4; vz = (r() - .5) * 1.4; vy = -.3 - r() * .8; }
+  if (type === 'spray') { const an = r() * TAU, sp = 1.4 + r() * 1.8; vx = Math.cos(an) * sp; vz = Math.sin(an) * sp; vy = -.2 - r() * 1.1; }
   if (type === 'gas') { vx = (r() - .5) * .5; vy = (r() - .5) * .2; vz = (r() - .5) * .5; }
   if (type === 'heat') { vx = (r() - .5) * .4; vz = (r() - .5) * .4; }
   PA.vel.set([vx, vy, vz], i * 3);
@@ -346,13 +354,132 @@ function tickParticles(dt) {
 }
 
 /* ---------------------------------------------------------------- build / rebuild from config */
+/* ---------------------------------------------------------------- outdoor pre-action valve station + sprinkler network */
+const HEADS = [], DRY = new Color(0xaab3bb), WET = new Color(0x4fa0ff), UPV = new Vector3(0, 1, 0);
+let stn = null, wet = 0, airF = .6;
+function pipe(par, a, b, r, m) {
+  const A = new Vector3(a[0], a[1], a[2]), B = new Vector3(b[0], b[1], b[2]), len = A.distanceTo(B); if (len < 1e-4) return;
+  const c = new Mesh(new CylinderGeometry(r, r, len, 10), m);
+  c.position.copy(A).add(B).multiplyScalar(.5); c.quaternion.setFromUnitVectors(UPV, B.clone().sub(A).normalize()); par.add(c);
+}
+function run(par, p, r, m) {
+  for (let i = 0; i < p.length - 1; i++) pipe(par, p[i], p[i + 1], r, m);
+  for (let i = 1; i < p.length - 1; i++) { const j = new Mesh(new SphereGeometry(r * 1.15, 10, 8), m); j.position.set(p[i][0], p[i][1], p[i][2]); par.add(j); }
+}
+const runF = (fi, p, r, m) => run(dynG[fi], p.map(q => [q[0], q[1] - fi * FH, q[2]]), r, m);
+function ball(par, x, y, z) {
+  const b = sph(.085, M.gold); b.position.set(x, y, z); par.add(b);
+  const h = box(.3, .035, .045, M.yellow); h.position.set(x, y + .12, z); par.add(h);
+}
+function gaugeTex(txt) {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = '#f4f5f6'; x.beginPath(); x.arc(64, 64, 62, 0, TAU); x.fill();
+  x.strokeStyle = '#222'; x.lineWidth = 3; x.beginPath(); x.arc(64, 64, 60, 0, TAU); x.stroke();
+  for (let i = 0; i <= 10; i++) {
+    const a = (135 + i * 27) * Math.PI / 180, r1 = i % 5 ? 50 : 44; x.lineWidth = i % 5 ? 2 : 3;
+    x.beginPath(); x.moveTo(64 + Math.cos(a) * r1, 64 + Math.sin(a) * r1); x.lineTo(64 + Math.cos(a) * 56, 64 + Math.sin(a) * 56); x.stroke();
+  }
+  x.fillStyle = '#222'; x.font = 'bold 20px Arial'; x.textAlign = 'center'; x.fillText(txt, 64, 98);
+  return new CanvasTexture(c);
+}
+function mkGauge(txt) {
+  const g = new Group(), rim = cyl(.18, .07, M.dgrey, 20); rim.rotation.z = Math.PI / 2; g.add(rim);
+  const face = new Mesh(new CircleGeometry(.155, 28), new MeshBasicMaterial({map: gaugeTex(txt)})); face.rotation.y = Math.PI / 2; face.position.x = .037; g.add(face);
+  const piv = new Group(); piv.position.x = .045; const nd = box(.008, .13, .008, new MeshBasicMaterial({color: 0xd32f2f})); nd.position.y = .055; piv.add(nd); g.add(piv);
+  return {g, piv};
+}
+function buildStation() {
+  HEADS.length = 0; wet = 0; airF = .6;
+  const st = new Group(); st.position.set(SX, 0, SZ); dynG[0].add(st);
+  const R = M.red, P = M.pipe, D = M.pipeD;
+  const add = (o, x, y, z) => { o.position.set(x, y, z); st.add(o); return o; };
+  const ax = o => { o.rotation.z = Math.PI / 2; return o; };
+  outline(add(box(9.4, .3, 8.6, M.conc), 1.2, -.15, 1.1), st);
+  // water supply from outside, gate valve, strainer
+  run(st, [[7.4, .4, 0], [0, .4, 0], [0, 2.0, 0]], .2, P);
+  label('WATER SUPPLY', .6, st, 5.4, 1.15, 0);
+  add(ax(cyl(.27, .5, M.dgrey, 16)), 2.6, .4, 0); add(cyl(.16, .35, M.dgrey, 12), 2.6, .72, 0); add(cyl(.03, .55, M.grey, 8), 2.6, 1.1, 0);
+  const wh = add(new Mesh(new TorusGeometry(.25, .035, 8, 24), M.black), 2.6, 1.38, 0); wh.rotation.x = Math.PI / 2;
+  add(box(.5, .02, .035, M.black), 2.6, 1.38, 0); add(box(.035, .02, .5, M.black), 2.6, 1.38, 0);
+  add(cyl(.2, .7, M.black, 16), 4.7, .85, 0); add(cyl(.22, .06, M.dgrey, 16), 4.7, 1.22, 0);
+  // pre-action valve: body, flanges, diaphragm dome, system-side body
+  add(cyl(.34, 1.1, R, 24), 0, 1.25, 0); [.72, 1.78].forEach(y => add(cyl(.43, .1, R, 24), 0, y, 0));
+  add(ax(cyl(.62, .55, R, 28)), .5, 1.0, 0); add(ax(cyl(.4, .1, M.red2, 24)), .85, 1.0, 0); add(ax(cyl(.08, .12, M.dgrey, 10)), .95, 1.0, 0);
+  add(cyl(.3, .7, R, 24), 0, 2.2, 0); [1.88, 2.55].forEach(y => add(cyl(.38, .08, R, 24), 0, y, 0));
+  pipe(st, [0, 2.0, 0], [0, YC, 0], .2, D); add(new Mesh(new SphereGeometry(.23, 12, 10), D), 0, YC, 0);
+  // trim: water side, drain funnel, release box
+  run(st, [[0, .95, -.34], [0, .95, -.9], [.9, .95, -.9], [.9, 1.9, -.9]], .045, P); ball(st, 0, .95, -.62); ball(st, .6, .95, -.9);
+  pipe(st, [.3, .95, -.9], [.3, .65, -.9], .045, P);
+  const fn = add(new Mesh(new ConeGeometry(.22, .3, 16, 1, true), std(0xd32f2f, {side: DoubleSide})), .3, .5, -.9); fn.rotation.x = Math.PI;
+  const rb = new Group(); add(rb, .9, 2.2, -.9); rb.add(box(.34, .5, .26, R)); const lb = box(.01, .3, .18, M.white); lb.position.x = .175; rb.add(lb);
+  const rh = halo(2.6); rb.add(rh);
+  // gauges
+  const wg = mkGauge('WATER'), ag = mkGauge('AIR');
+  run(st, [[.25, .95, .3], [.25, .95, .8], [.95, .95, .8]], .04, P); ball(st, .6, .95, .8); add(wg.g, 1.0, .95, .8);
+  run(st, [[.2, 2.3, .25], [.9, 2.3, .25]], .04, D); ball(st, .55, 2.3, .25); add(ag.g, .95, 2.3, .25);
+  run(st, [[.55, 2.3, .25], [.55, 2.3, .95], [1.15, 2.3, .95], [1.15, 2.65, .95]], .04, D);
+  // air compressor feeding the system-side trim
+  const tank = add(ax(cyl(.42, 1.7, std(0x2f7fe0), 24)), .5, .8, 3.2);
+  [-.35, 1.35].forEach(x => { const c = sph(.42, tank.material); c.scale.set(.45, 1, 1); add(c, x, .8, 3.2); });
+  [[-.15, 2.9], [-.15, 3.5], [1.15, 2.9], [1.15, 3.5]].forEach(([x, z]) => add(box(.09, .4, .09, M.blue2), x, .2, z));
+  add(box(.5, .18, .4, M.dgrey), .1, 1.3, 3.2); add(box(.62, .36, .5, tank.material), .1, 1.58, 3.2);
+  add(box(.7, .16, .4, M.dgrey), 1.05, 1.3, 3.2); add(ax(cyl(.22, .55, M.dgrey, 16)), 1.05, 1.6, 3.2);
+  const fw = new Group(); fw.add(ax(cyl(.25, .05, M.black, 20))); fw.add(box(.05, .42, .05, M.grey)); add(fw, .62, 1.6, 3.2);
+  run(st, [[.1, 1.1, 2.9], [.1, 2.3, 2.9], [.1, 2.3, .25]], .04, P); ball(st, .1, 1.8, 2.9);
+  label('AIR COMPRESSOR', .5, st, .5, 2.3, 3.2);
+  // connection into the building: through the wall, then risers, mains, branches and heads on each floor
+  add(ax(cyl(.28, .3, M.dgrey, 20)), -5.5, YC, 0);
+  run(st, [[0, YC, 0], [-7, YC, 0]], .14, D);
+  label('TO SPRINKLERS', .6, st, -3.2, YC + 1.0, 0);
+  label('PRE-ACTION VALVE', .95, st, 1.3, 4.6, 0); label('OUTSIDE BUILDING', .6, st, 1.3, 4.05, 0);
+  for (let fi = 0; fi < 3; fi++) {
+    const y = fi * FH + YC;
+    if (fi > 0) runF(fi, [[RX, y - FH, SZ], [RX, y, SZ]], .12, D);
+    const e = sph(.16, D); e.position.set(RX, YC, SZ); dynG[fi].add(e);
+    runF(fi, [[RX, y, SZ], [-11.5, y, SZ]], .1, D);
+    [11, 0, -11].forEach(x => {
+      const zEnd = fi === 0 && x > 8 ? 2 : -3;
+      runF(fi, [[x, y, SZ], [x, y, zEnd]], .07, D);
+      [7, 2, -3].forEach(z => {
+        if (z < zEnd - .01) return;
+        const hd = new Group(); hd.position.set(x, YC, z); dynG[fi].add(hd);
+        const dp = cyl(.025, .12, M.gold, 8); dp.position.y = -.06; hd.add(dp);
+        const bulb = sph(.032, M.red); bulb.position.y = -.14; hd.add(bulb);
+        const df = cyl(.09, .012, M.gold, 12); df.position.y = -.2; hd.add(df);
+        HEADS.push({fi, p: new Vector3(x, fi * FH + YC - .2, z), bulb, acc: 0});
+      });
+    });
+  }
+  stn = {airN: ag.piv, watN: wg.piv, fw, rh};
+}
+function stationFrame(dt) {
+  if (!stn) return;
+  const rel = !!L.release, pa = IN.some(d => d.style === 'valve' && d.on);
+  wet = approach(wet, rel ? 1 : 0, .4, dt);
+  M.pipeD.color.copy(DRY).lerp(WET, wet); M.pipeD.emissive.setHex(0x1565ff); M.pipeD.emissiveIntensity = .5 * wet;
+  airF = approach(airF, rel ? .72 : pa ? .04 : .6, .35, dt);
+  stn.airN.rotation.x = (135 - airF * 270) * Math.PI / 180; stn.watN.rotation.x = (135 - .72 * 270) * Math.PI / 180;
+  stn.fw.rotation.x += (pa && !rel ? 14 : 0) * dt;
+  stn.rh.material.opacity = rel ? .55 + .2 * Math.sin(T * 8) : 0;
+  const al = IN.filter(d => d.on && (d.style === 'smoke' || d.style === 'heat' || d.style === 'mcp')), cand = [];
+  if (rel) for (const h of HEADS) {
+    let m = 99; for (const a of al) if (floorOf(a.wpos.y) === h.fi) m = Math.min(m, Math.hypot(a.wpos.x - h.p.x, a.wpos.z - h.p.z));
+    if (m < 9) cand.push([m, h]);
+  }
+  cand.sort((a, b) => a[0] - b[0]); const open = new Set(cand.slice(0, 8).map(c => c[1]));
+  for (const h of HEADS) {
+    const o = open.has(h); h.bulb.visible = !o;
+    if (o && wet > .6) { h.acc += dt * 30; while (h.acc >= 1) { h.acc--; emit('spray', h.p.x, h.p.y, h.p.z); } }
+  }
+}
+
 function rebuild(C) {
   dynG.forEach(g => { while (g.children.length) g.remove(g.children[0]); });
   IN.length = OUT.length = pickables.length = 0; lift = null; if (gasBox) { gasBox.parent && gasBox.parent.remove(gasBox); gasBox = null; }
   Object.keys(cnt).forEach(k => cnt[k] = 0);
   // remove lift car from previous build
   scene.children.filter(o => o.userData.lift).forEach(o => scene.remove(o));
-  buildPanel_attach(); buildInputs(C); C.outputs.forEach(o => mkOut(o, C));
+  buildPanel_attach(); buildInputs(C); C.outputs.forEach(o => mkOut(o, C)); buildStation();
   if (lift) lift.car.userData.lift = 1;
   scene.updateMatrixWorld(true); IN.forEach(d => d.g.getWorldPosition(d.wpos)); cfgRef = C; applyFloors();
 }
@@ -366,12 +493,13 @@ function frame(dt) {
     d.on = on; d.led.material.emissive.setHex(on ? col : 0); d.led.material.emissiveIntensity = on ? 2.4 : 0;
     d.h.material.opacity = on ? .5 + .25 * Math.sin(T * 7) : 0; d.h.material.color.setHex(col); d.h.scale.setScalar(d.h.userData.base * (1 + (on ? .12 * Math.sin(T * 7) : 0)));
     if (on) {
-      const rate = d.style === 'smoke' ? 12 : d.style === 'heat' ? 14 : d.style === 'valve' || d.style === 'flow' ? 45 : 0;
+      const rate = d.style === 'smoke' ? 12 : d.style === 'heat' ? 14 : 0;
       if (rate) { d.acc += dt * rate; while (d.acc >= 1) { d.acc--; const t = d.style === 'smoke' ? 'smoke' : d.style === 'heat' ? 'heat' : 'water'; emit(t, d.wpos.x + (Math.random() - .5) * .3, d.wpos.y + (t === 'water' ? .3 : -.1), d.wpos.z + (Math.random() - .5) * .3); } }
     }
   }
   for (const d of OUT) d.upd(dt, T);
   const ll = s.leds || {}; if (facp) { setLed(facp.leds.pwr, true, 1.4); setLed(facp.leds.pre, ll.pre); setLed(facp.leds.fire, ll.fire); setLed(facp.leds.sup, ll.sup); setLed(facp.leds.sil, ll.sil); drawPanel(); }
+  stationFrame(dt);
   tickParticles(dt);
 }
 function applyFloors() {
@@ -432,7 +560,7 @@ export function init(el, a) {
   scene = new Scene(); camera = new PerspectiveCamera(40, 1, .5, 400);
   const hemi = new HemisphereLight(0xffffff, 0x8899aa, 1.2); scene.add(hemi); scene.userData.hemi = hemi;
   const sun = new DirectionalLight(0xffffff, 1.3); sun.position.set(20, 40, 25); scene.add(sun);
-  controls = new OrbitControls(camera, canvas); controls.enableDamping = true; controls.dampingFactor = .09; controls.maxPolarAngle = Math.PI * .495; controls.minDistance = 8; controls.maxDistance = 160; controls.autoRotateSpeed = .8;
+  controls = new OrbitControls(camera, canvas); controls.enableDamping = true; controls.dampingFactor = .09; controls.maxPolarAngle = Math.PI * .495; controls.minDistance = 5; controls.maxDistance = 160; controls.autoRotateSpeed = .8;
   makeMats(); buildBuilding(); buildParticles(); applyTheme(); bindEvents(); resize(); resetView(true);
 }
 export function update(s) {
@@ -441,7 +569,7 @@ export function update(s) {
 }
 export function setActive(b) { running = b; if (b) { resize(); applyTheme(); start(); } else stop(); }
 export function resetView(instant) {
-  const far = camera.aspect < .9 ? Math.min(2.1, 1.2 / camera.aspect) : 1, p1 = new Vector3(31 * far, 22 * far, 38 * far), t1 = new Vector3(0, 5.5, 0);
+  const far = camera.aspect < .9 ? Math.min(2.1, 1.2 / camera.aspect) : 1, p1 = new Vector3(34 * far, 22 * far, 39 * far), t1 = new Vector3(7, 3.5, 5);
   if (instant) { camera.position.copy(p1); controls.target.copy(t1); controls.update(); } else tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1};
 }
 export function setFloor(n) { floorCap = n; applyFloors(); }
@@ -452,4 +580,8 @@ export function focusAlarm() {
   const fi = floorOf(d.wpos.y); if (fi > floorCap) { floorCap = Math.max(floorCap, fi); applyFloors(); }
   const t1 = d.wpos.clone(), off = camera.position.clone().sub(controls.target).normalize().multiplyScalar(camera.aspect < .9 ? 30 : 16);
   tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)}; return true;
+}
+export function focusValve() {
+  const t1 = new Vector3(SX + .4, 1.9, SZ + .6), off = new Vector3(.55, .32, .8).normalize().multiplyScalar(camera.aspect < .9 ? 15 : 10.5);
+  tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)};
 }
