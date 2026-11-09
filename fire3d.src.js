@@ -207,6 +207,7 @@ const SL = {
   mcp: [[-17.8, 1.4, 4, Math.PI / 2], [-4.2, 5.4, -3.5, Math.PI / 2], [-4.2, 9.4, -3.5, Math.PI / 2], [17.8, 1.4, 6, -Math.PI / 2]],
   valve: [[SX + 1.15, 2.95, SZ + .95, 0]], flow: [[SX - 2.6, YC + .34, SZ + ZW, 0]],
   button: [[7.75, 1.4, -4.5, Math.PI / 2], [7.75, 1.4, -6, Math.PI / 2]],
+  pump: [[SX + 8.4, 2.5, SZ + -1.6, Math.PI / 2], [SX + 8.4, 2.5, SZ - .6, Math.PI / 2], [SX + 8.4, 2.5, SZ + .4, Math.PI / 2], [SX + 8.4, 2.5, SZ + 1.4, Math.PI / 2]],
   fmSmoke: [[12, 3.75, -6.5], [10, 3.75, -9]], fmHeat: [[14, 3.75, -8.5], [14, 3.75, -5]]
 };
 const used = {};
@@ -215,6 +216,7 @@ function styleOf(g, p) {
   const t = (p.label || '') + ' ' + p.id;
   if (g.key === 'mcp' || /call point|mcp|break ?glass/i.test(g.name)) return 'mcp';
   if (g.key === 'pa' || /pre-?action/i.test(g.name)) return 'valve';
+  if (g.key === 'pump' || /fire pump/i.test(g.name)) return 'pump';
   if (g.key === 'flow' || /flow/i.test(g.name)) return 'flow';
   if (/MDB|button|discharge|manual/i.test(t)) return 'button';
   if (/heat|FHD/i.test(t) || g.key === 'heat') return 'heat';
@@ -233,6 +235,8 @@ function inShape(style) {
   } else if (style === 'valve') {
     const b = cyl(.15, .5, M.dgrey, 16); g.add(b); const cp = cyl(.17, .06, M.grey, 16); cp.position.y = .28; g.add(cp);
     const bs = box(.34, .14, .3, M.dgrey); bs.position.y = -.3; g.add(bs); led.position.set(0, .38, 0);
+  } else if (style === 'pump') {
+    const b = box(.5, .36, .12, M.dgrey); g.add(b); const pl = box(.36, .12, .02, M.white); pl.position.set(0, -.08, .07); g.add(pl); led.position.set(.14, .1, .07);
   } else if (style === 'flow') {
     const sd = cyl(.13, .08, M.grey, 14); sd.position.y = -.14; g.add(sd); const b = box(.36, .26, .3, M.red); g.add(b);
     const dm = new Mesh(new SphereGeometry(.15, 14, 8, 0, TAU, 0, Math.PI / 2), M.red); dm.position.y = .13; g.add(dm); led.position.set(.2, .02, .16);
@@ -246,7 +250,7 @@ function buildInputs(C) {
     const style = styleOf(grp, p), fm = /fm ?200/i.test(grp.key + grp.name);
     const sl = fm && style === 'smoke' ? slot('fmSmoke') : fm && style === 'heat' ? slot('fmHeat') : slot(style);
     const {g, led} = inShape(style), h = halo(style === 'valve' ? 2.4 : 2.2); g.add(h);
-    put(g, sl[0], sl[1], sl[2], sl[3] || 0, style === 'valve' ? 1.3 : style === 'flow' ? 1.5 : 1.9);
+    put(g, sl[0], sl[1], sl[2], sl[3] || 0, style === 'valve' ? 1.3 : style === 'flow' ? 1.5 : style === 'pump' ? 1.5 : 1.9);
     const pm = new MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false});
     const pk = style === 'valve' ? new Mesh(new SphereGeometry(1.3, 10, 8), pm) : new Mesh(new SphereGeometry(.55, 8, 6), pm);
     if (style === 'valve') pk.position.set(-.58, -1.12, -.77);
@@ -841,6 +845,12 @@ export function focusDev(kind, id, n = 0) {
   const t1 = d.wpos.clone(), off = camera.position.clone().sub(controls.target).normalize().multiplyScalar(camera.aspect < .9 ? 30 : 15);
   tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)}; return arr.length;
 }
+export function focusFloor(fi) {
+  fi = clamp(fi | 0, 0, 2); if (floorCap < fi) { floorCap = fi; applyFloors(); }
+  const t1 = new Vector3(0, fi * FH + 1.5, 0), off = new Vector3(.45, .8, .9).normalize().multiplyScalar(camera.aspect < .9 ? 62 : 36);
+  tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)};
+}
+export function snapshot() { renderer.render(scene, camera); return canvas.toDataURL('image/png'); }
 export function setFloor(n) { floorCap = n; applyFloors(); }
 export function setWalls(b) { showWalls = b; applyFloors(); }
 export function setAuto(b) { controls.autoRotate = b; }
