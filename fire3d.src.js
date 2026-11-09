@@ -51,7 +51,7 @@ function halo(size) {
 }
 function label(text, size = 1, parent, x = 0, y = 0, z = 0) {
   const c = document.createElement('canvas'); c.width = 320; c.height = 80;
-  const g = c.getContext('2d'); let fs = 38; g.font = `700 ${fs}px Barlow,Arial,sans-serif`; const tw = g.measureText(text).width; if (tw > 290) { fs = Math.floor(fs * 290 / tw); g.font = `700 ${fs}px Barlow,Arial,sans-serif`; } g.textAlign = 'center'; g.textBaseline = 'middle';
+  const g = c.getContext('2d'); let fs = 38; g.font = `700 ${fs}px "Atkinson Hyperlegible",Arial,sans-serif`; const tw = g.measureText(text).width; if (tw > 290) { fs = Math.floor(fs * 290 / tw); g.font = `700 ${fs}px "Atkinson Hyperlegible",Arial,sans-serif`; } g.textAlign = 'center'; g.textBaseline = 'middle';
   g.lineWidth = 7; g.strokeStyle = 'rgba(10,14,20,.75)'; g.strokeText(text, 160, 42); g.fillStyle = '#fff'; g.fillText(text, 160, 42);
   const s = new Sprite(new SpriteMaterial({map: new CanvasTexture(c), transparent: true, depthTest: false, depthWrite: false, opacity: .9}));
   s.scale.set(size * 4, size, 1); s.position.set(x, y, z); s.renderOrder = 15; if (parent) parent.add(s); return s;
@@ -60,7 +60,7 @@ function liveLabel(size, parent, x, y, z) {
   const c = document.createElement('canvas'); c.width = 320; c.height = 80; const tex = new CanvasTexture(c);
   const sp = new Sprite(new SpriteMaterial({map: tex, transparent: true, depthTest: false, depthWrite: false, opacity: .95}));
   sp.scale.set(size * 4, size, 1); sp.position.set(x, y, z); sp.renderOrder = 15; parent.add(sp);
-  sp.userData.draw = (t, col = '#fff') => { const g = c.getContext('2d'); g.clearRect(0, 0, 320, 80); g.font = '700 38px Barlow,Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = 'rgba(10,14,20,.75)'; g.strokeText(t, 160, 42); g.fillStyle = col; g.fillText(t, 160, 42); tex.needsUpdate = true; };
+  sp.userData.draw = (t, col = '#fff') => { const g = c.getContext('2d'); g.clearRect(0, 0, 320, 80); g.font = '700 38px "Atkinson Hyperlegible",Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = 'rgba(10,14,20,.75)'; g.strokeText(t, 160, 42); g.fillStyle = col; g.fillText(t, 160, 42); tex.needsUpdate = true; };
   return sp;
 }
 const lerp = MathUtils.lerp, clamp = MathUtils.clamp;

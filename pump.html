@@ -4,16 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fire Pump Simulator</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<style>
+<style>@font-face{font-family:"Archivo";src:url(fonts/archivo-var.woff2) format("woff2");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url(fonts/atkinson-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url(fonts/atkinson-700.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible Mono";src:url(fonts/atkinson-mono-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible Mono";src:url(fonts/atkinson-mono-700.woff2) format("woff2");font-weight:700;font-display:swap}
+
 html,body{margin:0}
 /* Layout: your photo is the stage; live gauges, lamps, selectors and switches are drawn on top of it. Controls and test tools sit underneath. */
 :root{
   --bg:#e4e8eb; --surface:#f3f5f6; --ink:#1b2126; --muted:#56616b; --line:#c2c9cf; --input:#ffffff; --plate:#1d2227; --plate-ink:#f1f4f5;
   --red:#c1121f; --jockey:#2c8a49; --main:#1e5fc4; --diesel:#c1121f; --amber:#9a5b00; --ok:#1f7a3a;
-  --display:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --display:'Archivo',system-ui,Arial,sans-serif; --body:'Atkinson Hyperlegible',system-ui,Arial,sans-serif; --mono:'Atkinson Hyperlegible Mono',Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -34,7 +36,7 @@ button,input{font:inherit;color:inherit}
 .top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px 24px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:14px;min-width:0}
 .slashes{display:flex;gap:5px;flex:none}.slashes i{display:block;width:9px;height:34px;background:var(--red);transform:skewX(-22deg)}.slashes i:first-child{width:14px}
-h1{margin:0;font:700 clamp(26px,5vw,36px)/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+h1{margin:0;font:700 clamp(26px,5vw,36px)/1 var(--display);}
 .lede{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:62ch}
 .clock{font:500 13px var(--mono);color:var(--muted);display:flex;gap:10px 14px;flex-wrap:wrap}.clock b{color:var(--ink);font-weight:500}
 
@@ -50,7 +52,7 @@ h1{margin:0;font:700 clamp(26px,5vw,36px)/1 var(--display);letter-spacing:.04em;
 body.emb{padding-block:6px 24px}
 .emb-only{display:none}.emb .emb-only{display:inline-flex}
 .sum{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--muted);border-radius:8px;padding:10px 14px}
-.sum b{font:700 18px var(--display);letter-spacing:.08em;text-transform:uppercase}
+.sum b{font:700 18px var(--display);}
 .sum span{font:500 13px var(--mono);color:var(--muted)}
 .sum.ok{border-left-color:var(--ok)}.sum.warn{border-left-color:var(--amber)}.sum.bad{border-left-color:var(--red)}
 .sum .sp-gap{flex:1}
@@ -61,34 +63,34 @@ body.emb{padding-block:6px 24px}
 .scn{display:flex;flex-wrap:wrap;gap:8px}
 .scn .btn{font-size:13px}
 .sec{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
-.sec>h2{margin:0 0 12px;font:600 15px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.sec>h2{margin:0 0 12px;font:600 15px var(--display);color:var(--muted)}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.card h3{margin:0;font:700 20px var(--display);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.card h3{margin:0;font:700 20px var(--display);display:flex;align-items:center;gap:10px}
 .card h3 i{width:12px;height:12px;border-radius:2px;background:var(--pc);flex:none}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.lbl{font:600 12px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.lbl{font:600 12px var(--display);color:var(--muted)}
 .sw{display:inline-flex;align-items:center;gap:8px;background:none;border:0;padding:2px;cursor:pointer;font:500 12px var(--mono)}
 .sw .track{width:42px;height:22px;border-radius:11px;background:#6b747b;position:relative;transition:background-color .15s}
 .sw .track::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#f4f6f7;transition:transform .15s}
 .sw[aria-checked=true] .track{background:var(--ok)}.sw[aria-checked=true] .track::after{transform:translateX(20px)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
-.seg button{background:var(--input);border:0;padding:7px 14px;cursor:pointer;font:600 13px var(--display);letter-spacing:.1em;border-right:1px solid var(--line)}
+.seg button{background:var(--input);border:0;padding:7px 14px;cursor:pointer;font:600 13px var(--display);border-right:1px solid var(--line)}
 .seg button:last-child{border-right:0}
 .seg button[aria-checked=true]{background:var(--plate);color:var(--plate-ink)}
 .btn{background:var(--input);border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;font-weight:500;font-size:14px}
 .btn:hover{border-color:var(--muted)}.btn:disabled{opacity:.45;cursor:not-allowed}
 .btn.primary{background:var(--plate);color:var(--plate-ink);border-color:var(--plate)}
 .manual{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.manual .btn{font:600 13px var(--display);letter-spacing:.14em}
+.manual .btn{font:600 13px var(--display);}
 .status{font:500 12px/1.35 var(--mono);display:flex;gap:7px;align-items:flex-start;min-height:2.7em}
 .status i{flex:none;width:8px;height:8px;border-radius:50%;margin-top:4px;background:var(--muted)}
 .status.run i{background:var(--ok)}.status.warn i{background:var(--amber)}.status.bad i{background:var(--red)}
 .sp{display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--line);padding-top:12px}
-.sp label{display:flex;flex-direction:column;gap:3px;font:600 12px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.sp label{display:flex;flex-direction:column;gap:3px;font:600 12px var(--display);color:var(--muted)}
 .sp input{width:100%;min-width:0;background:var(--input);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:500 16px var(--mono);color:var(--ink)}
 .sp input[aria-invalid=true]{border-color:var(--red)}
-.sp small{font:400 11px var(--mono);text-transform:none;letter-spacing:0}
+.sp small{font:400 11px var(--mono);text-transform:none;}
 .sp-msg{grid-column:1/-1;margin:0;font-size:12px;color:var(--red)}
 
 .lower{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
@@ -105,6 +107,13 @@ body.emb{padding-block:6px 24px}
 .log time{color:var(--muted)}.log i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .log .start i{background:var(--ok)}.log .fault i{background:var(--red)}.log .stop i{background:var(--main)}.log .fault span{color:var(--red)}
 @media (prefers-reduced-motion:reduce){.sw .track,.sw .track::after{transition:none}}
+
+h1,h2,h3,.sum b,.tkn b{font-stretch:90%}
+h1{font-weight:800}
+.slashes{display:none}
+.emb .brand{display:none}.emb .top{justify-content:flex-end}
+.ov text{font-stretch:76%}
+.card h3,.sec>h2{font-weight:700}
 </style>
 </head>
 <body>
@@ -118,7 +127,7 @@ body.emb{padding-block:6px 24px}
         <p class="lede">The gauges, lamps, selectors, panel switches and the water in the pipes on your picture are live. Water speed follows the flow. Click a selector or switch on the picture, or use the controls underneath.</p>
       </div>
     </div>
-    <div class="clock" style="align-items:center"><button class="btn emb-only" id="to3d" type="button">View in 3D →</button><div class="seg" id="unitSeg" role="radiogroup" aria-label="Pressure unit"></div><span>Sim time <b id="clock">00:00</b></span><span id="speedNote"></span></div>
+    <div class="clock" style="align-items:center"><button class="btn emb-only" id="to3d" type="button">View in 3D</button><div class="seg" id="unitSeg" role="radiogroup" aria-label="Pressure unit"></div><span>Sim time <b id="clock">00:00</b></span><span id="speedNote"></span></div>
   </header>
 
   <div class="sum" id="sum" role="status"><b id="sumT">Normal</b><span id="sumD"></span></div>
