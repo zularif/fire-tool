@@ -4,7 +4,7 @@
 import {
   BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, CylinderGeometry, DoubleSide,
   EdgesGeometry, GridHelper, Group, HemisphereLight, DirectionalLight, LineBasicMaterial, LineSegments, MathUtils, Mesh,
-  MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera, Points, Raycaster, RepeatWrapping, Scene, ShaderMaterial,
+  MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera, Points, PointsMaterial, Raycaster, RepeatWrapping, Scene, ShaderMaterial,
   CircleGeometry, SphereGeometry, Sprite, SpriteMaterial, TorusGeometry, Vector2, Vector3, WebGLRenderer
 } from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
@@ -60,7 +60,7 @@ function liveLabel(size, parent, x, y, z) {
   const c = document.createElement('canvas'); c.width = 320; c.height = 80; const tex = new CanvasTexture(c);
   const sp = new Sprite(new SpriteMaterial({map: tex, transparent: true, depthTest: false, depthWrite: false, opacity: .95}));
   sp.scale.set(size * 4, size, 1); sp.position.set(x, y, z); sp.renderOrder = 15; parent.add(sp);
-  sp.userData.draw = t => { const g = c.getContext('2d'); g.clearRect(0, 0, 320, 80); g.font = '700 38px Barlow,Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = 'rgba(10,14,20,.75)'; g.strokeText(t, 160, 42); g.fillStyle = '#fff'; g.fillText(t, 160, 42); tex.needsUpdate = true; };
+  sp.userData.draw = (t, col = '#fff') => { const g = c.getContext('2d'); g.clearRect(0, 0, 320, 80); g.font = '700 38px Barlow,Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = 'rgba(10,14,20,.75)'; g.strokeText(t, 160, 42); g.fillStyle = col; g.fillText(t, 160, 42); tex.needsUpdate = true; };
   return sp;
 }
 const lerp = MathUtils.lerp, clamp = MathUtils.clamp;
@@ -220,7 +220,7 @@ function mkOut(o, C) {
     || ({audible: 'bell', voice: 'speaker', av: 'strobe', visual: 'lamp', signal: 'signal'}[kind]) || 'generic';
   const devs = [], mk = (u, extra = {}) => { const d = {kind: 'out', key: k, upd: u, ...extra}; devs.push(d); OUT.push(d); return d; };
   const sig = s => ({st: L.outState[k] || '', on: !!L.outState[k], sil: L.sil, col: COL[L.outState[k]] || COL.fire, ...s});
-  const addPick = (obj, d, r = .9) => { const pk = new Mesh(new SphereGeometry(r, 8, 6), new MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false})); pk.userData.dev = d; obj.add(pk); pickables.push(pk); };
+  const addPick = (obj, d, r = .9) => { const pk = new Mesh(new SphereGeometry(r, 8, 6), new MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false})); pk.userData.dev = d; obj.add(pk); pickables.push(pk); if (!d.g) d.g = obj; };
   if (type === 'bell') {
     nth('bell', SLOT_BELL, 3).forEach(sl => {
       const g = new Group(), dome = new Mesh(new SphereGeometry(.3, 16, 10, 0, TAU, 0, Math.PI / 2), M.gold); dome.rotation.x = Math.PI / 2; g.add(dome);
@@ -622,11 +622,62 @@ function rebuild(C) {
   scene.children.filter(o => o.userData.lift).forEach(o => scene.remove(o));
   buildPanel_attach(); buildInputs(C); C.outputs.forEach(o => mkOut(o, C)); buildStation();
   if (lift) lift.car.userData.lift = 1;
-  scene.updateMatrixWorld(true); IN.forEach(d => d.g.getWorldPosition(d.wpos)); cfgRef = C; applyFloors();
+  scene.updateMatrixWorld(true); IN.forEach(d => d.g.getWorldPosition(d.wpos)); OUT.forEach(d => { if (d.g) { d.wpos = new Vector3(); d.g.getWorldPosition(d.wpos); } }); cfgRef = C; applyFloors(); fxReset();
 }
 function buildPanel_attach() { buildPanel(); dynG[0].add(facp.g); }
 
 /* ---------------------------------------------------------------- per-frame */
+/* ---------------------------------------------------------------- active-device tags + cause->effect lines */
+let fxG = null, tags = new Map(), linkLine = null, linkPts = null, linkSeg = [], needLinks = true, showLinks = true;
+const _v = new Vector3(), _w = new Vector3();
+function fxReset() {
+  if (fxG) { fxG.parent && fxG.parent.remove(fxG); } fxG = new Group(); scene.add(fxG); tags = new Map(); linkLine = linkPts = null; linkSeg = []; needLinks = true;
+}
+const outName = k => { const o = cfgRef && cfgRef.outputs.find(x => x.key === k); return o ? o.name.replace(/\s*\(.*\)/, '') : k; };
+const arcP = (a, b, u, out) => { out.lerpVectors(a, b, u); out.y += Math.sin(u * Math.PI) * (1.2 + a.distanceTo(b) * .16); return out; };
+function buildLinks() {
+  needLinks = false;
+  if (linkLine) { fxG.remove(linkLine); linkLine.geometry.dispose(); linkLine = null; } if (linkPts) { fxG.remove(linkPts); linkPts.geometry.dispose(); linkPts = null; }
+  linkSeg = []; const seen = new Set();
+  (L.links || []).forEach(l => l.ins.forEach(i => l.outs.forEach(o => {
+    const a = IN.find(x => x.id === i), b = OUT.find(x => x.key === o && x.wpos), key = i + '>' + o;
+    if (!a || !b || seen.has(key) || linkSeg.length >= 80) return; seen.add(key); linkSeg.push({a, b, col: new Color(COL[l.t] || COL.fire)});
+  })));
+  if (!linkSeg.length) return;
+  const N = 16, pos = new Float32Array(linkSeg.length * (N - 1) * 6), col = new Float32Array(pos.length);
+  linkSeg.forEach((l, j) => { for (let k = 0; k < N - 1; k++) { const o = (j * (N - 1) + k) * 6; for (let e = 0; e < 2; e++) { col[o + e * 3] = l.col.r; col[o + e * 3 + 1] = l.col.g; col[o + e * 3 + 2] = l.col.b; } } });
+  const g = new BufferGeometry(); g.setAttribute('position', new BufferAttribute(pos, 3)); g.setAttribute('color', new BufferAttribute(col, 3));
+  linkLine = new LineSegments(g, new LineBasicMaterial({vertexColors: true, transparent: true, opacity: .55, depthTest: false})); linkLine.renderOrder = 12; linkLine.frustumCulled = false; fxG.add(linkLine);
+  const pg = new BufferGeometry(); pg.setAttribute('position', new BufferAttribute(new Float32Array(linkSeg.length * 2 * 3), 3));
+  linkPts = new Points(pg, new PointsMaterial({size: .45, map: DOT, color: 0xffffff, transparent: true, depthTest: false, depthWrite: false, opacity: .95})); linkPts.renderOrder = 13; linkPts.frustumCulled = false; fxG.add(linkPts);
+}
+function fxFrame(dt) {
+  if (!fxG) fxReset();
+  OUT.forEach(d => { if (d.g && d.wpos) d.g.getWorldPosition(d.wpos); });
+  // tags: one per active input, one per active output type
+  const want = new Map();
+  for (const d of IN) if (d.on) want.set('i:' + d.id, {p: d.wpos, t: d.id, c: '#ffb4ae', dy: .95});
+  for (const d of OUT) { const k = d.key; if (L.outState[k] && d.wpos && !want.has('o:' + k)) want.set('o:' + k, {p: d.wpos, t: outName(k), c: '#bfe3ff', dy: .8}); }
+  tags.forEach((tg, k) => { if (!want.has(k)) tg.sp.visible = false; });
+  want.forEach((w, k) => {
+    let tg = tags.get(k); if (!tg) { tg = {sp: liveLabel(.5, fxG, 0, 0, 0), txt: ''}; tags.set(k, tg); }
+    if (tg.txt !== w.t) { tg.txt = w.t; tg.sp.userData.draw(w.t.slice(0, 22), w.c); }
+    const vis = floorOf(w.p.y) <= floorCap; tg.sp.visible = vis; if (!vis) return;
+    tg.sp.position.set(w.p.x, w.p.y + w.dy, w.p.z); const sz = clamp(camera.position.distanceTo(tg.sp.position) * .019, .4, 1.2); tg.sp.scale.set(sz * 4, sz, 1);
+  });
+  // cause -> effect lines
+  if (needLinks) buildLinks();
+  const on = showLinks && linkLine; if (linkLine) linkLine.visible = linkPts.visible = !!showLinks;
+  if (on) {
+    const N = 16, pa = linkLine.geometry.attributes.position.array, pp = linkPts.geometry.attributes.position.array;
+    linkSeg.forEach((l, j) => {
+      _w.copy(l.a.wpos); let prev = _w.clone();
+      for (let k = 0; k < N - 1; k++) { const o = (j * (N - 1) + k) * 6, u1 = (k + 1) / (N - 1); arcP(l.a.wpos, l.b.wpos, k / (N - 1), _v); pa[o] = _v.x; pa[o + 1] = _v.y; pa[o + 2] = _v.z; arcP(l.a.wpos, l.b.wpos, u1, _v); pa[o + 3] = _v.x; pa[o + 4] = _v.y; pa[o + 5] = _v.z; }
+      for (let e = 0; e < 2; e++) { arcP(l.a.wpos, l.b.wpos, (T * .45 + e * .5 + j * .13) % 1, _v); const o = (j * 2 + e) * 3; pp[o] = _v.x; pp[o + 1] = _v.y; pp[o + 2] = _v.z; }
+    });
+    linkLine.geometry.attributes.position.needsUpdate = true; linkPts.geometry.attributes.position.needsUpdate = true;
+  }
+}
 function frame(dt) {
   const s = L;
   for (const d of IN) {
@@ -641,6 +692,7 @@ function frame(dt) {
   for (const d of OUT) d.upd(dt, T);
   const ll = s.leds || {}; if (facp) { setLed(facp.leds.pwr, true, 1.4); setLed(facp.leds.pre, ll.pre); setLed(facp.leds.fire, ll.fire); setLed(facp.leds.sup, ll.sup); setLed(facp.leds.sil, ll.sil); drawPanel(); }
   stationFrame(dt);
+  fxFrame(dt);
   tickParticles(dt);
 }
 function applyFloors() {
@@ -705,18 +757,29 @@ export function init(el, a) {
   makeMats(); buildBuilding(); buildParticles(); applyTheme(); bindEvents(); resize(); resetView(true);
 }
 export function update(s) {
-  L = Object.assign(L, s);
+  L = Object.assign(L, s); if (s.links) { const sg = JSON.stringify(s.links); if (sg !== L._ls) { L._ls = sg; needLinks = true; } }
   if (s.C && s.C !== cfgRef) rebuild(s.C);
 }
 export function setActive(b) { running = b; if (b) { resize(); applyTheme(); start(); } else stop(); }
 export function resetView(instant) {
-  const far = camera.aspect < .9 ? Math.min(2.7, 1.55 / camera.aspect) : 1, p1 = new Vector3(40 * far, 24 * far, 41 * far), t1 = new Vector3(14, 2, 3);
+  const far = camera.aspect < .9 ? Math.min(2.7, 1.55 / camera.aspect) : 1, p1 = new Vector3(47 * far, 28 * far, 48 * far), t1 = new Vector3(13, 2, 2);
   if (instant) { camera.position.copy(p1); controls.target.copy(t1); controls.update(); } else tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1};
 }
 export function setPump(q) { L.pump = q; }
 export function focusPump() {
   const t1 = new Vector3(SX + 14.5, 1.6, SZ - 2), off = new Vector3(.55, .5, .75).normalize().multiplyScalar(camera.aspect < .9 ? 40 : 24);
   tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)};
+}
+export function showLinkLines(b) { showLinks = b; }
+export function where(kind, id) {
+  const d = kind === 'in' ? IN.find(x => x.id === id) : OUT.find(x => x.key === id && x.wpos); if (!d || !d.wpos) return '';
+  const p = d.wpos; if (p.x > 18.6 || p.z > 11.4 || p.z < -11.4) return 'Outside'; return ['G', 'L1', 'L2', 'Roof'][floorOf(p.y)] || '';
+}
+export function focusDev(kind, id, n = 0) {
+  const arr = kind === 'in' ? IN.filter(x => x.id === id) : OUT.filter(x => x.key === id && x.wpos); if (!arr.length) return false;
+  const d = arr[n % arr.length], fi = floorOf(d.wpos.y); if (fi > floorCap) { floorCap = fi; applyFloors(); }
+  const t1 = d.wpos.clone(), off = camera.position.clone().sub(controls.target).normalize().multiplyScalar(camera.aspect < .9 ? 30 : 15);
+  tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)}; return arr.length;
 }
 export function setFloor(n) { floorCap = n; applyFloors(); }
 export function setWalls(b) { showWalls = b; applyFloors(); }
