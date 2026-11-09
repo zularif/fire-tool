@@ -173,6 +173,7 @@ function inShape(style) {
   } else { g.add(box(.3, .3, .3, M.grey)); led.position.y = .2; }
   g.add(led); return {g, led};
 }
+const extraPk = [];
 function buildInputs(C) {
   Object.keys(used).forEach(k => used[k] = 0);
   C.inputs.forEach(grp => grp.points.forEach(p => {
@@ -184,14 +185,16 @@ function buildInputs(C) {
     const pk = style === 'valve' ? new Mesh(new SphereGeometry(1.3, 10, 8), pm) : new Mesh(new SphereGeometry(.55, 8, 6), pm);
     if (style === 'valve') pk.position.set(-.58, -1.12, -.77);
     g.add(pk);
+    if (style === 'flow') { const pk2 = new Mesh(new SphereGeometry(1.15, 10, 8), pm); pk2.position.set(1.73, -1.79, 0); g.add(pk2); pk2.userData.dev = null; extraPk.push(pk2); }
     const dev = {kind: 'in', id: p.id, key: grp.key, style, led, h, g, acc: 0, wpos: new Vector3(), on: false};
     pk.userData.dev = dev; pickables.push(pk); IN.push(dev);
+    while (extraPk.length) { const e = extraPk.pop(); e.userData.dev = dev; pickables.push(e); }
   }));
 }
 
 /* ---------------------------------------------------------------- outputs */
 const SLOT_BELL = [[-17.7, 3.1, -1, Math.PI / 2], [-4.2, 7.1, 4, Math.PI / 2], [17.7, 11.1, 2, -Math.PI / 2], [5, 7.1, 10.8, Math.PI]];
-const SLOT_SPK = [[-10, 3.95, 0], [8, 3.95, 6], [-6, 7.95, 5], [10, 7.95, -2], [-6, 11.95, 3], [12, 11.95, 6]];
+const SLOT_SPK = [[-17.7, 3.0, 2.5, Math.PI / 2], [12.5, 3.0, 10.8, Math.PI], [-4.2, 7.0, 7, Math.PI / 2], [17.7, 7.0, -4, -Math.PI / 2], [-17.7, 11.0, 5, Math.PI / 2], [17.7, 11.0, -4, -Math.PI / 2]];
 const SLOT_STR = [[-17.7, 2.7, 5.5, Math.PI / 2], [-4.2, 6.7, -1, Math.PI / 2], [-4.2, 10.7, -1, Math.PI / 2], [17.7, 2.7, 8, -Math.PI / 2], [8.3, 6.7, 10.8, Math.PI]];
 const SLOT_GEN = [[0, 12.35, 4], [4, 12.35, 6], [-6, 12.35, 0], [10, 12.35, 0], [14, 12.35, 6]];
 const cnt = {};
@@ -219,10 +222,10 @@ function mkOut(o, C) {
     });
   } else if (type === 'speaker') {
     nth('spk', SLOT_SPK, 4).forEach(sl => {
-      const g = new Group(), b = box(.4, .14, .4, M.grey); g.add(b); const c = new Mesh(new ConeGeometry(.28, .32, 18, 1, true), std(0xdfe3e7, {side: DoubleSide})); c.position.y = -.2; c.rotation.x = Math.PI; g.add(c);
-      const rings = [0, 1, 2].map(i => { const r = new Mesh(new TorusGeometry(.4, .018, 6, 28), new MeshBasicMaterial({color: 0x4da3ff, transparent: true, opacity: 0})); r.rotation.x = Math.PI / 2; g.add(r); return r; });
-      put(g, sl[0], sl[1], sl[2], 0, 1.8);
-      const d = mk((dt, t) => { const s = sig(), on = s.on && !s.sil; rings.forEach((r, i) => { const u = ((t * .9 + i / 3) % 1); r.position.y = -.35 - u * 1.4; r.scale.setScalar(.7 + u * 1.5); r.material.opacity = on ? (1 - u) * .8 : 0; r.material.color.setHex(s.col === COL.fire ? 0x4da3ff : s.col); }); });
+      const g = new Group(), b = box(.4, .34, .2, M.grey); g.add(b); const c = new Mesh(new ConeGeometry(.2, .3, 18, 1, true), std(0xdfe3e7, {side: DoubleSide})); c.rotation.x = Math.PI / 2; c.position.z = .22; g.add(c);
+      const rings = [0, 1, 2].map(i => { const r = new Mesh(new TorusGeometry(.4, .018, 6, 28), new MeshBasicMaterial({color: 0x4da3ff, transparent: true, opacity: 0})); g.add(r); return r; });
+      put(g, sl[0], sl[1], sl[2], sl[3], 1.8);
+      const d = mk((dt, t) => { const s = sig(), on = s.on && !s.sil; rings.forEach((r, i) => { const u = ((t * .9 + i / 3) % 1); r.position.z = .4 + u * 1.4; r.scale.setScalar(.7 + u * 1.5); r.material.opacity = on ? (1 - u) * .8 : 0; r.material.color.setHex(s.col === COL.fire ? 0x4da3ff : s.col); }); });
       addPick(g, d);
     });
   } else if (type === 'strobe') {
