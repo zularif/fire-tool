@@ -396,7 +396,9 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 .v3-load{position:absolute;inset:0;display:grid;place-items:center;padding:16px;text-align:center;color:var(--muted);font-size:14px}
 .v3-bot .btn.attn{border-color:var(--fire);box-shadow:0 0 0 2px var(--fire-soft)}
 .v3-gap{flex:1 1 8px}
-.v3-leg{position:absolute;right:10px;top:8px;z-index:2;display:flex;flex-direction:column;gap:3px;padding:6px 9px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);pointer-events:none;opacity:.95}
+.v3-side{position:absolute;right:10px;top:8px;z-index:2;width:262px;max-height:calc(100% - 46px);overflow:auto;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.v3-side>*{pointer-events:auto}
+.v3-leg{position:static;display:flex;flex-direction:column;gap:3px;padding:6px 9px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);pointer-events:none;opacity:.95}
 .v3-pump{position:absolute;left:10px;top:8px;z-index:2;display:flex;flex-direction:column;gap:5px;padding:7px 10px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);cursor:pointer;min-width:134px;text-align:left;font-family:inherit}
 .v3-pump:hover,.v3-pump:focus-visible{border-color:var(--muted)}
 .v3-pump .hd{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.v3-pump .hd b{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg)}
@@ -406,8 +408,25 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 .vp-c i{width:8px;height:8px;border-radius:50%;background:#7b848b}
 .vp-c.run i{background:#2fbf5f;box-shadow:0 0 6px #2fbf5f}.vp-c.bad i{background:#e5392f}.vp-c.off i{background:#e0a21b}
 .v3-pump .go{color:var(--accent);font-weight:600}
-@media(max-width:560px){.v3-leg{top:auto;bottom:30px;right:8px;font-size:10px;padding:5px 7px}.v3-pump{min-width:0;padding:6px 8px}.v3-pump .go{display:none}}
+@media(max-width:560px){.v3-side{top:auto;bottom:30px;left:8px;right:8px;width:auto;max-height:52%}.v3-leg{font-size:10px;padding:5px 7px}.v3-pump{min-width:0;padding:6px 8px}.v3-pump .go{display:none}}
 #vpump[hidden],.bar[hidden]{display:none!important}
+.v3-act{background:var(--surface);border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--muted)}
+.v3-act .hd{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer}
+.v3-act .hd:focus-visible{outline:2px solid var(--accent)}
+.v3-act .hd b{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg)}
+.v3-act .hd .n{margin-left:auto;font-weight:600}.v3-act .hd .n.hot{color:var(--fire,#d32f2f)}
+.v3-act .bd{padding:0 10px 8px;display:flex;flex-direction:column;gap:6px}.v3-act[data-open="0"] .bd{display:none}
+.v3-act h4{margin:4px 0 2px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.v3-act ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.v3-act li button{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:4px;cursor:pointer;color:var(--fg)}
+.v3-act li button:hover,.v3-act li button:focus-visible{background:var(--surface-2,#eef1f4)}
+.v3-act li i{flex:none;width:9px;height:9px;border-radius:50%;background:#7b848b}
+.v3-act li i.fire{background:#ff3b30;box-shadow:0 0 6px #ff3b30}.v3-act li i.pre{background:#ff9f0a}.v3-act li i.sup{background:#ffc400}
+.v3-act li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v3-act li small{flex:none;color:var(--muted);font-size:10.5px;border:1px solid var(--line);border-radius:8px;padding:0 5px}
+.v3-act .empty{font-style:italic;padding:2px 6px}
+.v3-act .tg{display:flex;align-items:center;gap:6px;padding-top:4px;border-top:1px solid var(--line);cursor:pointer}
+#v3-floors [data-fl].alm::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#ff3b30;margin-left:5px;vertical-align:middle}
 #pumpf{width:100%;border:0;display:block;min-height:760px;background:transparent}
 .v3-leg i{display:inline-block;width:18px;height:6px;border-radius:2px;margin-right:6px;vertical-align:middle}
 </style>
@@ -434,7 +453,16 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
     <div class="v3-top"><span class="v3-pill s0" id="v3-pill">Normal</span><span class="v3-txt" id="v3-txt">System normal. No devices in alarm.</span></div>
     <div class="v3-stage" id="v3-stage">
       <div class="v3-load" id="v3-load">Loading 3D view…</div>
+      <div class="v3-side">
       <div class="v3-leg" aria-label="Pipe colours"><span><i style="background:#e5392f"></i>Wet sprinkler · Ground</span><span><i style="background:#7a1717"></i>Pre-action sprinkler · L1–L2</span><span><i style="background:#4fa0ff"></i>Pre-action filled after release</span><span><i style="background:#aab3bb;box-shadow:0 0 5px #1565ff"></i>Fire pump supply · glows blue when pumping</span></div>
+      <div class="v3-act" id="v3-act" data-open="1"><button class="hd" id="va-hd" type="button" aria-expanded="true" aria-controls="va-bd"><b>Active devices</b><span class="n" id="va-n">none</span></button>
+        <div class="bd" id="va-bd">
+          <h4>Inputs in alarm (causes)</h4><ul id="va-in"></ul>
+          <h4>Outputs activated (effects)</h4><ul id="va-out"></ul>
+          <div id="va-pw"></div>
+          <label class="tg"><input type="checkbox" id="va-lines" checked> Show cause &rarr; effect lines</label>
+        </div></div>
+    </div>
       <button class="v3-pump" id="v3-pumphud" type="button" aria-label="Fire pump status. Open the fire pump page"><span class="hd"><b>Fire pump</b><span id="vp-p">–</span></span><span class="ch"><span class="vp-c" data-k="0" title="Jockey pump"><i></i>J</span><span class="vp-c" data-k="1" title="Electric pump (duty)"><i></i>E</span><span class="vp-c" data-k="2" title="Diesel pump (standby)"><i></i>D</span></span><span id="vp-t">Tank –</span><span class="go">Open pump page →</span></button>
       <div class="v3-hint">Drag to orbit · scroll or pinch to zoom · tap a detector, call point or valve to trigger it</div>
     </div>
@@ -1128,18 +1156,35 @@ function f3Describe(d){
   const o=cfg().outputs.find(x=>x.key===d.key),st=$('#st-'+d.key);
   return o?`<b>${esc(o.name)}</b><br>${esc(st?st.textContent:'Standby')}`:'';
 }
+function f3Links(c){return c.matched.map(r=>{const ins=new Set();r.when.forEach(x=>cset(x).forEach(id=>{if(S.on.has(id))ins.add(id)}));return {t:r.type,ins:[...ins],outs:r.outputs.filter(o=>c.outState[o])}})}
+const vaN={};let vaSig='';
+function vaRender(c){
+  const C=cfg(),sil=S.sil;
+  const ins=c.pts.map(({g,p})=>({id:p.id,name:itemName(g,p),st:c.inState[g.key]||'fire',fl:F3?F3.where('in',p.id):''}));
+  const outs=Object.keys(c.outState).map(k=>{const o=C.outputs.find(x=>x.key===k);if(!o)return null;
+    return {key:k,name:o.name.replace(/\s*\(.*\)/,''),st:c.outState[k],fl:F3?F3.where('out',k):'',note:sil&&(o.kind==='audible'||o.kind==='av'||o.kind==='voice')?'silenced':''}}).filter(Boolean);
+  const pend=[...new Map(c.counting.map(x=>[x.o,x])).values()].map(x=>{const o=C.outputs.find(y=>y.key===x.o);return o?o.name.replace(/\s*\(.*\)/,'')+' in '+x.left+'s':''}).filter(Boolean);
+  const sig=JSON.stringify([ins,outs,pend]);if(sig===vaSig)return;vaSig=sig;
+  const li=(a,tag,id,st,name,fl,note)=>`<li><button type="button" data-${tag}="${esc(id)}"><i class="${st}"></i><span>${esc(name)}</span>${note?`<small>${note}</small>`:''}${fl?`<small>${esc(fl)}</small>`:''}</button></li>`;
+  $('#va-in').innerHTML=ins.length?ins.map(d=>li(0,'in',d.id,d.st,d.id+' · '+d.name.replace(new RegExp('\\s*'+d.id+'$'),''),d.fl,'')).join(''):'<li class="empty">No input in alarm</li>';
+  $('#va-out').innerHTML=outs.length?outs.map(d=>li(0,'out',d.key,d.st,d.name,d.fl,d.note)).join(''):'<li class="empty">No output active</li>';
+  $('#va-pw').innerHTML=pend.length?'<h4>Waiting on timers</h4><ul>'+pend.map(t=>`<li><span style="padding:2px 6px">${esc(t)}</span></li>`).join('')+'</ul>':'';
+  const n=$('#va-n');n.textContent=ins.length||outs.length?ins.length+' in · '+outs.length+' out':'none';n.classList.toggle('hot',ins.length>0);
+  const fls=new Set(ins.map(d=>d.fl));$('#v3-floors').querySelectorAll('[data-fl]').forEach(b=>{const f=+b.dataset.fl;b.classList.toggle('alm',f===3?ins.length>0:fls.has(['G','L1','L2'][f]))});
+}
 function f3Sync(c){
   const rank=c.top?TYPE[c.top.type].rank:0;
-  F3.update({C:cfg(),on:S.on,outState:c.outState,inState:c.inState,sil:S.sil,ack:S.ack,rank,release:c.matched.some(r=>r.type==='fire'&&r.when.some(w=>w.groups.includes('pa'))),
+  F3.update({links:f3Links(c),C:cfg(),on:S.on,outState:c.outState,inState:c.inState,sil:S.sil,ack:S.ack,rank,release:c.matched.some(r=>r.type==='fire'&&r.when.some(w=>w.groups.includes('pa'))),
     leds:{pre:c.matched.some(r=>r.type==='pre'),fire:rank===3,sup:c.matched.some(r=>r.type==='sup'),sil:rank>1&&S.sil},
     scr:{h:$('#scr-h').textContent,c:$('#scr-c').textContent,l:c.pts.slice(0,5).map(x=>x.p.addr+' '+x.p.id)}});
   [['ack','k-ack'],['sil','k-sil'],['reset','k-reset']].forEach(([k,s])=>{const a=$('#'+s),b=$('#k3-'+k);if(!a||!b)return;
     b.disabled=a.disabled;b.setAttribute('aria-pressed',a.getAttribute('aria-pressed')||'false');b.classList.toggle('attn',a.classList.contains('attn'))});
+  vaRender(c);
   const p=$('#v3-pill');p.textContent=$('#pill').textContent;p.className='v3-pill s'+rank;$('#v3-txt').textContent=$('#stage-txt').textContent;
 }
 function f3Init(){
   if(F3)return Promise.resolve(F3);
-  if(!f3Pending)f3Pending=import('./fire3d.js?v=5').then(m=>{
+  if(!f3Pending)f3Pending=import('./fire3d.js?v=6').then(m=>{
     m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;const l=$('#v3-load');if(l)l.remove();return m;
   }).catch(e=>{f3Pending=null;const l=$('#v3-load');if(l)l.textContent='3D view could not load ('+((e&&e.message)||e)+'). Check that fire3d.js is uploaded next to index.html and that this browser supports WebGL.';return null});
   return f3Pending;
@@ -1181,6 +1226,11 @@ setInterval(()=>{
   }
 },120);
 $('#k-vpump').addEventListener('click',()=>setMode('pump'));
+$('#va-hd').addEventListener('click',()=>{const a=$('#v3-act'),o=a.dataset.open==='1'?'0':'1';a.dataset.open=o;$('#va-hd').setAttribute('aria-expanded',o==='1')});
+if(window.matchMedia&&matchMedia('(max-width:560px)').matches){$('#v3-act').dataset.open='0';$('#va-hd').setAttribute('aria-expanded','false')}
+$('#va-lines').addEventListener('change',e=>F3&&F3.showLinkLines(e.target.checked));
+$('#v3-act').addEventListener('click',e=>{const b=e.target.closest('button[data-in],button[data-out]');if(!b||!F3)return;
+  if(b.dataset.in)F3.focusDev('in',b.dataset.in);else{const k=b.dataset.out;vaN[k]=(vaN[k]||0)+1;F3.focusDev('out',k,vaN[k]-1)}});
 $('#v3-pumphud').addEventListener('click',()=>setMode('pump'));
 $('#v3-pump').addEventListener('click',()=>F3&&F3.focusPump());
 $('#k-v2d').addEventListener('click',()=>setMode('2d'));
