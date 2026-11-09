@@ -10,6 +10,7 @@ import {
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 
 const FH = 4, W = 36, D = 22;                       // floor height, building width (x), depth (z) in metres
+const PCOL = [0x2c8a49, 0x1e5fc4, 0xc1121f];
 const COL = {fire: 0xff3b30, pre: 0xff9f0a, sup: 0xffc400};
 const TAU = Math.PI * 2;
 const SX = 23.5, SZ = 9.6, ZW = -3.6, RX = 16.5, YC = 3.5;   // outdoor valve station origin, inside riser x, sprinkler pipe height above each floor
@@ -55,6 +56,13 @@ function label(text, size = 1, parent, x = 0, y = 0, z = 0) {
   const s = new Sprite(new SpriteMaterial({map: new CanvasTexture(c), transparent: true, depthTest: false, depthWrite: false, opacity: .9}));
   s.scale.set(size * 4, size, 1); s.position.set(x, y, z); s.renderOrder = 15; if (parent) parent.add(s); return s;
 }
+function liveLabel(size, parent, x, y, z) {
+  const c = document.createElement('canvas'); c.width = 320; c.height = 80; const tex = new CanvasTexture(c);
+  const sp = new Sprite(new SpriteMaterial({map: tex, transparent: true, depthTest: false, depthWrite: false, opacity: .95}));
+  sp.scale.set(size * 4, size, 1); sp.position.set(x, y, z); sp.renderOrder = 15; parent.add(sp);
+  sp.userData.draw = t => { const g = c.getContext('2d'); g.clearRect(0, 0, 320, 80); g.font = '700 38px Barlow,Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = 'rgba(10,14,20,.75)'; g.strokeText(t, 160, 42); g.fillStyle = '#fff'; g.fillText(t, 160, 42); tex.needsUpdate = true; };
+  return sp;
+}
 const lerp = MathUtils.lerp, clamp = MathUtils.clamp;
 const approach = (v, t, r, dt) => v + clamp(t - v, -r * dt, r * dt);
 
@@ -68,6 +76,7 @@ function makeMats() {
   M.red = std(0xd32f2f); M.white = std(0xf1f3f5); M.grey = std(0x8a949e); M.dgrey = std(0x4b5560); M.gold = std(0xd9a21b, {metalness: .5});
   M.pipe = std(0xaab3bb, {metalness: .45, roughness: .45}); M.pipeD = std(0x7a1717, {metalness: .3, roughness: .5}); M.pipeW = std(0xe5392f, {metalness: .2, roughness: .5});
   M.conc = std(0xaeb6bd, {roughness: .95}); M.black = std(0x1d2126, {roughness: .6}); M.red2 = std(0xa82020); M.blue2 = std(0x1f5fb0);
+  M.pipeP = std(0xaab3bb, {metalness: .45, roughness: .45}); M.tankShell = std(0x9fc3e6, {transparent: true, opacity: .2, depthWrite: false, side: DoubleSide}); M.water = std(0x2f8fd8, {transparent: true, opacity: .75, depthWrite: false, roughness: .2});
   M.orange = std(0xf08a24); M.yellow = std(0xf6c026); M.blue = std(0x2b6cc4); M.green = std(0x2e9d4f);
 }
 function applyTheme() {
@@ -391,16 +400,41 @@ function mkGauge(txt) {
   const piv = new Group(); piv.position.x = .045; const nd = box(.008, .13, .008, new MeshBasicMaterial({color: 0xd32f2f})); nd.position.y = .055; piv.add(nd); g.add(piv);
   return {g, piv};
 }
+const PR_ = [.22, .38, .38], PNAME = ['Jockey pump', 'Electric pump (duty)', 'Diesel pump (standby)'];
+function pumpTip(i) {
+  const q = L.pump; if (!q) return '<b>' + PNAME[i] + '</b>'; const p = q.pumps[i];
+  const t = !p.power ? 'NO POWER' : p.fault ? 'START CALL NOT ANSWERED' : p.run ? 'RUNNING' : p.mode === 'OFF' ? 'SELECTOR OFF' : 'Standby';
+  return '<b>' + PNAME[i] + '</b> · ' + t + '<br>Selector ' + p.mode + ' · system ' + q.P.toFixed(1) + ' bar<br>Open the Fire pump page to operate it';
+}
+function tankTip() { const q = L.pump; return '<b>Fire water tank</b><br>' + (q ? Math.round(q.tank.pct * 100) + '% · ' + Math.round(q.tank.litres).toLocaleString('en-US') + ' L' + (q.tank.empty ? ' · EMPTY' : q.tank.low ? ' · LOW' : '') : 'full'); }
+function pumpFrame(dt) {
+  const q = L.pump, k = stn.pk, gr = f => (135 - f * 270) * Math.PI / 180, P_ = q ? q.P : 8.6, fr = clamp(P_ * 14.5038 / 250, 0, 1);
+  stn.watN.rotation.x = stn.supN.rotation.x = stn.sysN.rotation.x = stn.dgN.rotation.x = gr(fr);
+  let sum = 0;
+  k.pumps.forEach((p, i) => {
+    const pi = q ? q.pumps[i] : {speed: 0, run: false, power: true, fault: false, mode: 'AUTO'}, sp = pi.speed; sum += sp;
+    p.spin.rotation.x += sp * 22 * dt; p.g.position.y = sp > .05 ? Math.sin(T * 70) * .004 * sp : 0;
+    p.mat.emissive.setHex(PCOL[i]); p.mat.emissiveIntensity = .35 * sp;
+    const c = k.cab[i], on = [pi.power, pi.power && pi.run, pi.power && pi.fault && Math.sin(T * 9) > 0];
+    c.lamps.forEach((l, j) => { l.m.emissive.setHex(on[j] ? l.c : 0); l.m.emissiveIntensity = on[j] ? 2.2 : 0; });
+    c.kn.rotation.z = -(({OFF: -62, AUTO: 0, MANUAL: 62})[pi.mode] || 0) * Math.PI / 180;
+  });
+  M.pipeP.emissive.setHex(0x1565ff); M.pipeP.emissiveIntensity = (P_ > 1 ? .1 : 0) + .4 * clamp(sum, 0, 1);
+  const pct = q ? q.tank.pct : 1; k.water.scale.y = Math.max(.003, pct); k.lvl.scale.y = Math.max(.003, pct);
+  M.water.color.setHex(pct < .2 ? 0xd9822b : 0x2f8fd8);
+  const rp = Math.round(pct * 100); if (rp !== k.lastPct) { k.lastPct = rp; k.tl.userData.draw(rp + '%'); }
+}
 function buildStation() {
   HEADS.length = 0; wet = 0; airF = .6;
+  for (let i = walls.length - 1; i >= 0; i--) if (walls[i].userData.pump) walls.splice(i, 1);
   const st = new Group(); st.position.set(SX, 0, SZ); dynG[0].add(st);
   const R = M.red, P = M.pipe, D = M.pipeD;
   const add = (o, x, y, z) => { o.position.set(x, y, z); st.add(o); return o; };
   const ax = o => { o.rotation.z = Math.PI / 2; return o; };
   outline(add(box(9.4, .3, 10.8, M.conc), 1.2, -.15, .1), st);
   // water supply from outside, gate valve, strainer
-  run(st, [[7.4, .4, 0], [0, .4, 0], [0, 2.0, 0]], .2, P);
-  label('WATER SUPPLY', .6, st, 5.4, 1.15, 0);
+  run(st, [[9.6, .95, 0], [8.2, .95, 0], [8.2, .4, 0], [7.4, .4, 0], [0, .4, 0], [0, 2.0, 0]], .2, M.pipeP);
+  label('FROM FIRE PUMPS', .55, st, 6.1, 1.2, 0);
   add(ax(cyl(.27, .5, M.dgrey, 16)), 2.6, .4, 0); add(cyl(.16, .35, M.dgrey, 12), 2.6, .72, 0); add(cyl(.03, .55, M.grey, 8), 2.6, 1.1, 0);
   const wh = add(new Mesh(new TorusGeometry(.25, .035, 8, 24), M.black), 2.6, 1.38, 0); wh.rotation.x = Math.PI / 2;
   add(box(.5, .02, .035, M.black), 2.6, 1.38, 0); add(box(.035, .02, .5, M.black), 2.6, 1.38, 0);
@@ -437,7 +471,7 @@ function buildStation() {
   label('PRE-ACTION VALVE', .95, st, 1.3, 4.6, 0); label('OUTSIDE BUILDING', .6, st, 1.3, 4.05, 0);
   // wet-pipe system (ground floor): its own alarm check valve outside, red pipework, flow switch FS-01
   const W = M.pipeW;
-  run(st, [[4.0, .4, 0], [4.0, .4, ZW], [0, .4, ZW], [0, 1.65, ZW]], .2, P);
+  run(st, [[4.0, .4, 0], [4.0, .4, ZW], [0, .4, ZW], [0, 1.65, ZW]], .2, M.pipeP);
   add(ax(cyl(.27, .5, M.dgrey, 16)), 2.0, .4, ZW); add(cyl(.16, .35, M.dgrey, 12), 2.0, .72, ZW); add(cyl(.03, .55, M.grey, 8), 2.0, 1.1, ZW);
   const wh2 = add(new Mesh(new TorusGeometry(.25, .035, 8, 24), M.black), 2.0, 1.38, ZW); wh2.rotation.x = Math.PI / 2;
   add(box(.5, .02, .035, M.black), 2.0, 1.38, ZW); add(box(.035, .02, .5, M.black), 2.0, 1.38, ZW);
@@ -473,7 +507,86 @@ function buildStation() {
       });
     });
   }
-  stn = {airN: ag.piv, watN: wg.piv, fw, rh};
+
+  // ---- fire pump room + water tank (east of the valve pad): tank -> suction header -> 3 pumps -> discharge header -> sprinkler supply
+  const PC = [0x2c8a49, 0x1e5fc4, 0xc1121f], PZ = [-3.4, 0, 3.4], PN = ['JOCKEY PUMP', 'ELECTRIC PUMP (DUTY)', 'DIESEL PUMP (STANDBY)'];
+  const WX0 = 8.2, WX1 = 19.4, WZ0 = -5.3, WZ1 = 5.3, HH = 3.4, PXC = (WX0 + WX1) / 2;
+  outline(add(box(13.7, .3, 10.8, M.conc), 12.75, -.15, .1), st);
+  const hb = add(box(WX1 - WX0, HH, WZ1 - WZ0, M.glass), PXC, HH / 2, 0); hb.userData.pump = 1; walls.push(hb);
+  const hl = outline(hb, st); hl.userData.pump = 1; walls.push(hl);
+  [[WX1 - WX0, .08, PXC, WZ0], [WX1 - WX0, .08, PXC, WZ1], [.08, WZ1 - WZ0, WX0, 0], [.08, WZ1 - WZ0, WX1, 0]].forEach(([w, d, x, z]) => { const m = add(box(w, HH, d, M.wall), x, HH / 2, z); m.userData.pump = 1; walls.push(m); });
+  label('FIRE PUMP ROOM', .8, st, PXC, HH + .75, WZ1 + .2);
+  const cap = (x, y, z, r) => add(sph(r, M.pipeP), x, y, z);
+  run(st, [[9.6, .95, -3.9], [9.6, .95, 3.9]], .2, M.pipeP); cap(9.6, .95, -3.9, .2); cap(9.6, .95, 3.9, .2);
+  run(st, [[17.4, .25, -7.35], [17.4, .25, 3.9]], .22, M.pipeP); cap(17.4, .25, 3.9, .22);
+  const fl = add(cyl(.34, .08, M.dgrey, 20), 17.4, .25, -7.4); fl.rotation.x = Math.PI / 2;
+  label('SUCTION (FROM TANK)', .42, st, 17.4, 1.0, -6.2); label('DISCHARGE HEADER', .42, st, 9.6, 2.5, -2.4);
+  const dgg = mkGauge('BAR'); dgg.g.scale.setScalar(1.7); const dgs = dgg.g; add(dgs, 9.85, 1.9, 1.1);
+  run(st, [[9.6, .95, 1.1], [9.6, 1.7, 1.1]], .05, M.pipeP);
+  const pk = {pumps: [], cab: [], lastPct: -1};
+  const pm0 = new MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false});
+  const addPk = (r, x, y, z, dev) => { const q = new Mesh(new SphereGeometry(r, 10, 8), pm0); q.position.set(x, y, z); q.userData.dev = dev; st.add(q); pickables.push(q); };
+  PZ.forEach((z, i) => {
+    const ya = i ? .95 : .75, r = PR_[i], cm = std(PC[i], {metalness: .3, roughness: .45}), xc = 12.0, g = new Group(); g.position.set(0, 0, z); st.add(g);
+    const cs = ax(cyl(r, 1.1, cm, 24)); cs.position.set(xc, ya, 0); g.add(cs);
+    [-.55, .55].forEach(dx => { const f = ax(cyl(r * 1.28, .08, M.dgrey, 24)); f.position.set(xc + dx, ya, 0); g.add(f); });
+    const gd = box(.4, r * 1.5, r * 1.5, M.yellow); gd.position.set(xc + .75, ya, 0); g.add(gd);
+    let endX, mr;
+    if (i < 2) {
+      const len = i ? 1.7 : 1.0; mr = i ? .46 : .27; const mo = ax(cyl(mr, len, cm, 28)); mo.position.set(xc + .95 + len / 2, ya, 0); g.add(mo);
+      for (let k = 0; k < 4; k++) { const fn = ax(cyl(mr * 1.05, .035, M.dgrey, 28)); fn.position.set(xc + 1.2 + k * len / 4.5, ya, 0); g.add(fn); }
+      const tb = box(.4, .2, .4, M.dgrey); tb.position.set(xc + 1.5, ya + mr + .1, 0); g.add(tb); endX = xc + .95 + len;
+    } else {
+      mr = .45; const en = box(1.9, .9, .95, cm); en.position.set(xc + 1.9, ya, 0); g.add(en);
+      const hd = box(1.2, .22, .8, M.dgrey); hd.position.set(xc + 1.7, ya + .55, 0); g.add(hd);
+      const st2 = cyl(.09, 2.7, M.dgrey, 12); st2.position.set(xc + 2.4, ya + 1.8, .28); g.add(st2); const sc = cyl(.13, .08, M.black, 12); sc.position.set(xc + 2.4, ya + 3.17, .28); g.add(sc);
+      const rd = box(.3, 1.0, 1.0, M.dgrey); rd.position.set(xc + 3.0, ya, 0); g.add(rd);
+      const dt2 = box(.7, .5, .8, M.orange); dt2.position.set(xc + 2.3, .25, -.9); g.add(dt2); endX = xc + 3.15;
+    }
+    const skid = box(endX - (xc - .9) + .3, .2, 1.0, M.dgrey); skid.position.set((endX + xc - .9) / 2, .1, 0); g.add(skid);
+    [xc, endX - .5].forEach(px => { const h = ya - mr - .2; const pd = box(.5, h, .6, M.dgrey); pd.position.set(px, .2 + h / 2, 0); g.add(pd); });
+    const spin = new Group(); spin.position.set(endX + .04, ya, 0); const dsc = ax(cyl(.24, .03, M.black, 16)); spin.add(dsc); const bar = box(.03, .42, .07, M.white); spin.add(bar); g.add(spin);
+    const dr = i ? .14 : .09, sr = i ? .15 : .1;
+    run(st, i ? [[xc - .55, ya, z], [9.6, ya, z]] : [[xc - .55, ya, z], [10.6, ya, z], [10.6, .95, z], [9.6, .95, z]], dr, M.pipeP);
+    run(st, [[xc, ya - r, z], [xc, .25, z], [17.4, .25, z]], sr, M.pipeP);
+    add(ax(cyl(.17, .4, M.dgrey, 16)), 10.0 + (i ? .7 : 0), i ? ya : .95, z);
+    const wheel = add(new Mesh(new TorusGeometry(.17, .03, 8, 18), M.black), 10.0 + (i ? .7 : 0), (i ? ya : .95) + .42, z); wheel.rotation.x = Math.PI / 2;
+    add(cyl(.025, .35, M.grey, 8), 10.0 + (i ? .7 : 0), (i ? ya : .95) + .22, z);
+    label(PN[i], .4, st, xc + 1.6, i === 2 ? 4.0 : 2.7, z);
+    const dev = {kind: 'pump', i, html: () => pumpTip(i)};
+    addPk(1.4, xc + 1.2, ya, z, dev);
+    pk.pumps.push({g, mat: cm, spin});
+  });
+  [0, 1, 2].forEach(i => {
+    const cx = 10.4 + i * 1.5, cz = WZ0 + .42, body = box(1.0, 1.8, .5, std(0x4b5560)); body.position.set(cx, .9, cz); st.add(body);
+    const door = box(.88, 1.0, .03, std(0x20262b)); door.position.set(cx, 1.0, cz + .26); st.add(door);
+    const strip = box(1.0, .2, .52, std(PC[i])); strip.position.set(cx, 1.72, cz); st.add(strip);
+    const lamps = [0x3be06f, 0x3be06f, 0xff3b30].map((c, k) => { const m = new MeshStandardMaterial({color: 0x2b3238, emissive: 0, roughness: .4}); const l = sph(.055, m); l.position.set(cx - .25 + k * .25, 1.52, cz + .27); st.add(l); return {m, c}; });
+    const kn = new Group(); kn.position.set(cx, 1.15, cz + .29); const kc = cyl(.11, .06, M.black, 16); kc.rotation.x = Math.PI / 2; kn.add(kc); const kb = box(.03, .13, .02, M.white); kb.position.set(0, .055, .04); kn.add(kb); st.add(kn);
+    [[-.22, 0x1fa04f], [.22, 0xb3262a]].forEach(([dx, c]) => { const b = cyl(.06, .05, std(c), 14); b.rotation.x = Math.PI / 2; b.position.set(cx + dx, .72, cz + .29); st.add(b); });
+    label(['JOCKEY', 'ELECTRIC', 'DIESEL'][i], .3, st, cx, 2.2, cz + .1);
+    addPk(.85, cx, 1.0, cz + .2, {kind: 'pump', i, html: () => pumpTip(i)});
+    pk.cab.push({lamps, kn});
+  });
+  // water tank
+  const tx = 16.0, tz = -9.6, tr = 2.6, th = 4.6;
+  outline(add(box(tr * 2 + .8, .3, tr * 2 + .8, M.conc), tx, -.15, tz), st);
+  add(new Mesh(new CylinderGeometry(tr, tr, th, 40, 1, true), M.tankShell), tx, th / 2, tz);
+  [.04, th].forEach(y => { const rg = add(new Mesh(new TorusGeometry(tr, .05, 6, 48), M.dgrey), tx, y, tz); rg.rotation.x = Math.PI / 2; });
+  const rf = add(new Mesh(new CircleGeometry(tr, 40), M.tankShell), tx, th, tz); rf.rotation.x = -Math.PI / 2;
+  const wg2 = new CylinderGeometry(tr - .06, tr - .06, th - .3, 40); wg2.translate(0, (th - .3) / 2, 0);
+  const water = add(new Mesh(wg2, M.water), tx, .15, tz);
+  add(cyl(.14, .7, M.dgrey, 12), tx - 1.0, th + .35, tz); add(cyl(.4, .1, M.grey, 20), tx + .6, th + .05, tz - .6);
+  const lx = tx + 1.99 + .15, lz = tz + 1.67 + .12;
+  add(cyl(.09, th - .4, M.glass, 12), lx, th / 2, lz);
+  const lg = new CylinderGeometry(.05, .05, th - .5, 10); lg.translate(0, (th - .5) / 2, 0); const lvl = add(new Mesh(lg, M.water), lx, .25, lz);
+  for (let k = 0; k <= 4; k++) add(box(.22, .03, .03, M.black), lx + .12, .25 + k * (th - .5) / 4, lz);
+  [-.2, .2].forEach(dx => add(cyl(.025, th, M.grey, 6), tx + dx - .9, th / 2, tz + Math.sqrt(tr * tr - (dx - .9) * (dx - .9)) + .04));
+  for (let k = 0; k < 12; k++) add(box(.4, .03, .03, M.grey), tx - .9, .3 + k * .36, tz + Math.sqrt(tr * tr - .81) + .04);
+  label('FIRE WATER TANK', .75, st, tx, th + 1.5, tz);
+  const tl = liveLabel(.6, st, tx, th + .85, tz); tl.userData.draw('100%'); pk.tl = tl; pk.water = water; pk.lvl = lvl;
+  addPk(2.9, tx, th / 2, tz, {kind: 'tank', html: () => tankTip()});
+  stn = {airN: ag.piv, watN: wg.piv, supN: sg.piv, sysN: yg.piv, dgN: dgg.piv, fw, rh, pk};
 }
 function stationFrame(dt) {
   if (!stn) return;
@@ -481,7 +594,9 @@ function stationFrame(dt) {
   wet = approach(wet, rel ? 1 : 0, .4, dt);
   M.pipeD.color.copy(DRY).lerp(WET, wet); M.pipeD.emissive.setHex(0x1565ff); M.pipeD.emissiveIntensity = .5 * wet;
   airF = approach(airF, rel ? .72 : pa ? .04 : .6, .35, dt);
-  stn.airN.rotation.x = (135 - airF * 270) * Math.PI / 180; stn.watN.rotation.x = (135 - .72 * 270) * Math.PI / 180;
+  stn.airN.rotation.x = (135 - airF * 270) * Math.PI / 180;
+  pumpFrame(dt);
+  const pf = L.pump ? clamp(Math.sqrt(Math.max(0, L.pump.P) / 8.6), 0, 1.15) : 1;
   stn.fw.rotation.x += (pa && !rel ? 14 : 0) * dt;
   stn.rh.material.opacity = rel ? .55 + .2 * Math.sin(T * 8) : 0;
   const al = IN.filter(d => d.on && (d.style === 'smoke' || d.style === 'heat' || d.style === 'mcp'));
@@ -495,7 +610,7 @@ function stationFrame(dt) {
   const open = new Set([...near('pre', rel, 8), ...near('wet', flow, 4)]);
   for (const h of HEADS) {
     const o = open.has(h); h.bulb.visible = !o;
-    if (o && (h.sys === 'wet' || wet > .6)) { h.acc += dt * 30; while (h.acc >= 1) { h.acc--; emit('spray', h.p.x, h.p.y, h.p.z); } }
+    if (o && (h.sys === 'wet' || wet > .6)) { h.acc += dt * 30 * pf; while (h.acc >= 1) { h.acc--; emit('spray', h.p.x, h.p.y, h.p.z); } }
   }
 }
 
@@ -553,7 +668,7 @@ function pickAt(ev) {
 }
 function showTip(ev, d, pin) {
   if (!d) { if (!pin) tipEl.style.opacity = 0; return; }
-  const r = canvas.getBoundingClientRect(); tipEl.innerHTML = api.describe(d); tipEl.style.opacity = 1;
+  const r = canvas.getBoundingClientRect(); tipEl.innerHTML = d.html ? d.html() : api.describe(d); tipEl.style.opacity = 1;
   const x = clamp(ev.clientX - r.left + 14, 6, r.width - tipEl.offsetWidth - 6), y = clamp(ev.clientY - r.top + 14, 6, r.height - tipEl.offsetHeight - 6);
   tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px'; if (pin) pinTip = T + 3.5;
 }
@@ -564,7 +679,7 @@ function bindEvents() {
     if (!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y), dur = performance.now() - down.t; down = null;
     if (moved > 6 || dur > 600) return;
     const d = pickAt(e); if (!d) { tipEl.style.opacity = 0; return; }
-    if (d.kind === 'in') { api.toggle(d.id); showTip(e, d, true); setTimeout(() => { if (tipEl.style.opacity === '1') tipEl.innerHTML = api.describe(d); }, 60); } else showTip(e, d, true);
+    if (d.kind === 'in') { api.toggle(d.id); showTip(e, d, true); setTimeout(() => { if (tipEl.style.opacity === '1') tipEl.innerHTML = d.html ? d.html() : api.describe(d); }, 60); } else showTip(e, d, true);
   });
   canvas.addEventListener('pointermove', e => {
     if (e.pointerType === 'touch' || e.buttons) return; const d = pickAt(e); canvas.style.cursor = d ? 'pointer' : 'grab'; if (!pinTip) showTip(e, d, false);
@@ -595,8 +710,13 @@ export function update(s) {
 }
 export function setActive(b) { running = b; if (b) { resize(); applyTheme(); start(); } else stop(); }
 export function resetView(instant) {
-  const far = camera.aspect < .9 ? Math.min(2.1, 1.2 / camera.aspect) : 1, p1 = new Vector3(34 * far, 22 * far, 39 * far), t1 = new Vector3(7, 3.5, 5);
+  const far = camera.aspect < .9 ? Math.min(2.7, 1.55 / camera.aspect) : 1, p1 = new Vector3(40 * far, 24 * far, 41 * far), t1 = new Vector3(14, 2, 3);
   if (instant) { camera.position.copy(p1); controls.target.copy(t1); controls.update(); } else tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1};
+}
+export function setPump(q) { L.pump = q; }
+export function focusPump() {
+  const t1 = new Vector3(SX + 14.5, 1.6, SZ - 2), off = new Vector3(.55, .5, .75).normalize().multiplyScalar(camera.aspect < .9 ? 40 : 24);
+  tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)};
 }
 export function setFloor(n) { floorCap = n; applyFloors(); }
 export function setWalls(b) { showWalls = b; applyFloors(); }
