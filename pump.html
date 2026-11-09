@@ -495,7 +495,7 @@ applyUnit();readouts();history.push([0,P]);if(EMB)setFollow(true,true);
 log('Ready. System at '+ps(START_P)+', all panels ON and in AUTO.','info');
 requestAnimationFrame(function(t){last=t;lastTick=performance.now();requestAnimationFrame(frame)});
 window.PUMPAPI={
-  embedded:EMB,
+  embedded:EMB,reset:function(){$('#reset').click();if(EMB)setFollow(true,true)},
   setBuilding:function(n){n=Math.max(0,Math.min(12,n|0));if(n===bld.n)return;bld.n=n;if(bld.follow)setFollow(true)},
   state:function(){return {t:simTime,P:P,heads:heads,flow:Qout0(),follow:bld.follow,
     tank:{pct:tank.L/TANK_CAP,litres:tank.L,cap:TANK_CAP,low:tank.L/TANK_CAP<0.2,empty:tank.L/TANK_CAP<=0.03},
