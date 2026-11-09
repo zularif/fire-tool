@@ -397,6 +397,18 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 .v3-bot .btn.attn{border-color:var(--fire);box-shadow:0 0 0 2px var(--fire-soft)}
 .v3-gap{flex:1 1 8px}
 .v3-leg{position:absolute;right:10px;top:8px;z-index:2;display:flex;flex-direction:column;gap:3px;padding:6px 9px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);pointer-events:none;opacity:.95}
+.v3-pump{position:absolute;left:10px;top:8px;z-index:2;display:flex;flex-direction:column;gap:5px;padding:7px 10px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);cursor:pointer;min-width:134px;text-align:left;font-family:inherit}
+.v3-pump:hover,.v3-pump:focus-visible{border-color:var(--muted)}
+.v3-pump .hd{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.v3-pump .hd b{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg)}
+.v3-pump .hd span{font:600 14px ui-monospace,Menlo,Consolas,monospace;color:var(--fg)}
+.v3-pump .ch{display:flex;gap:5px;flex-wrap:wrap}
+.vp-c{display:inline-flex;align-items:center;gap:4px;padding:1px 6px 1px 4px;border-radius:10px;border:1px solid var(--line);font-weight:600}
+.vp-c i{width:8px;height:8px;border-radius:50%;background:#7b848b}
+.vp-c.run i{background:#2fbf5f;box-shadow:0 0 6px #2fbf5f}.vp-c.bad i{background:#e5392f}.vp-c.off i{background:#e0a21b}
+.v3-pump .go{color:var(--accent);font-weight:600}
+@media(max-width:560px){.v3-leg{top:auto;bottom:30px;right:8px;font-size:10px;padding:5px 7px}.v3-pump{min-width:0;padding:6px 8px}.v3-pump .go{display:none}}
+#vpump[hidden],.bar[hidden]{display:none!important}
+#pumpf{width:100%;border:0;display:block;min-height:760px;background:transparent}
 .v3-leg i{display:inline-block;width:18px;height:6px;border-radius:2px;margin-right:6px;vertical-align:middle}
 </style>
 </head>
@@ -409,6 +421,7 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
       <span class="seg" role="group" aria-label="View">
         <button class="btn" id="k-v2d" type="button" aria-pressed="true">2D diagram</button>
         <button class="btn" id="k-v3d" type="button" aria-pressed="false">3D building</button>
+        <button class="btn" id="k-vpump" type="button" aria-pressed="false">Fire pump</button>
       </span>
       <button class="btn" id="k-guide" type="button" aria-haspopup="dialog" aria-controls="guide-dialog">Quick guide</button>
       <button class="btn" id="k-about" type="button" aria-haspopup="dialog" aria-controls="about-dialog">Project Info</button>
@@ -421,7 +434,8 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
     <div class="v3-top"><span class="v3-pill s0" id="v3-pill">Normal</span><span class="v3-txt" id="v3-txt">System normal. No devices in alarm.</span></div>
     <div class="v3-stage" id="v3-stage">
       <div class="v3-load" id="v3-load">Loading 3D view…</div>
-      <div class="v3-leg" aria-label="Pipe colours"><span><i style="background:#e5392f"></i>Wet sprinkler · Ground</span><span><i style="background:#7a1717"></i>Pre-action sprinkler · L1–L2</span><span><i style="background:#4fa0ff"></i>Pre-action filled after release</span></div>
+      <div class="v3-leg" aria-label="Pipe colours"><span><i style="background:#e5392f"></i>Wet sprinkler · Ground</span><span><i style="background:#7a1717"></i>Pre-action sprinkler · L1–L2</span><span><i style="background:#4fa0ff"></i>Pre-action filled after release</span><span><i style="background:#aab3bb;box-shadow:0 0 5px #1565ff"></i>Fire pump supply · glows blue when pumping</span></div>
+      <button class="v3-pump" id="v3-pumphud" type="button" aria-label="Fire pump status. Open the fire pump page"><span class="hd"><b>Fire pump</b><span id="vp-p">–</span></span><span class="ch"><span class="vp-c" data-k="0" title="Jockey pump"><i></i>J</span><span class="vp-c" data-k="1" title="Electric pump (duty)"><i></i>E</span><span class="vp-c" data-k="2" title="Diesel pump (standby)"><i></i>D</span></span><span id="vp-t">Tank –</span><span class="go">Open pump page →</span></button>
       <div class="v3-hint">Drag to orbit · scroll or pinch to zoom · tap a detector, call point or valve to trigger it</div>
     </div>
     <div class="v3-bot">
@@ -439,9 +453,12 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
       <button class="btn" id="v3-rot" type="button" aria-pressed="false">Auto-rotate</button>
       <button class="btn" id="v3-focus" type="button">Focus alarm</button>
       <button class="btn" id="v3-valve" type="button">Valve station</button>
+      <button class="btn" id="v3-pump" type="button">Pump room</button>
       <button class="btn" id="v3-reset" type="button">Reset view</button>
     </div>
   </section>
+
+  <section id="vpump" hidden aria-label="Fire pump simulator"><iframe id="pumpf" title="Fire pump simulator" allow="fullscreen"></iframe></section>
 
   <div class="bar">
     <div class="pane">
@@ -780,7 +797,7 @@ function render(c){
   $('#k-sil').setAttribute('aria-pressed',S.sil);$('#k-ack').setAttribute('aria-pressed',S.ack);
   $('#k-ack').disabled=!S.on.size||S.ack;$('#k-sil').disabled=S.top<2;$('#k-reset').disabled=!S.on.size;
   $('#k-ack').classList.toggle('attn',S.on.size>0&&!S.ack);
-  LASTC=c;if(F3&&view3)f3Sync(c);
+  LASTC=c;if(F3&&view3)f3Sync(c);pumpHeads();
 }
 function ruleSummary(){
   const C=cfg();
@@ -1122,21 +1139,52 @@ function f3Sync(c){
 }
 function f3Init(){
   if(F3)return Promise.resolve(F3);
-  if(!f3Pending)f3Pending=import('./fire3d.js?v=3').then(m=>{
+  if(!f3Pending)f3Pending=import('./fire3d.js?v=5').then(m=>{
     m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;const l=$('#v3-load');if(l)l.remove();return m;
   }).catch(e=>{f3Pending=null;const l=$('#v3-load');if(l)l.textContent='3D view could not load ('+((e&&e.message)||e)+'). Check that fire3d.js is uploaded next to index.html and that this browser supports WebGL.';return null});
   return f3Pending;
 }
-async function setView(on){
-  view3=!!on;
-  $('.scroller').hidden=view3;$('#v3d').hidden=!view3;
-  $('#k-v2d').setAttribute('aria-pressed',!view3);$('#k-v3d').setAttribute('aria-pressed',view3);
-  try{history.replaceState(null,'',view3?'#3d':location.pathname+location.search)}catch(e){}
-  if(view3){const m=await f3Init();if(m&&view3){if(LASTC)f3Sync(LASTC);m.setActive(true)}}
+let mode='2d';
+async function setMode(m){
+  mode=m;view3=m==='3d';
+  $('.scroller').hidden=m!=='2d';$('#v3d').hidden=m!=='3d';$('#vpump').hidden=m!=='pump';$('.bar').hidden=m==='pump';
+  $('#k-v2d').setAttribute('aria-pressed',m==='2d');$('#k-v3d').setAttribute('aria-pressed',m==='3d');$('#k-vpump').setAttribute('aria-pressed',m==='pump');
+  try{history.replaceState(null,'',m==='3d'?'#3d':m==='pump'?'#pump':location.pathname+location.search)}catch(e){}
+  pumpLoad();
+  if(view3){const f=await f3Init();if(f&&view3){if(LASTC)f3Sync(LASTC);f.setActive(true)}}
   else if(F3)F3.setActive(false);
+  if(m!=='2d')window.scrollTo(0,0);
 }
-$('#k-v2d').addEventListener('click',()=>setView(false));
-$('#k-v3d').addEventListener('click',()=>setView(true));
+function setView(on){return setMode(on?'3d':'2d')}
+/* ---- fire pump bridge: the pump page runs in an iframe; sprinkler heads opened here feed its demand, its pressure/pumps/tank feed the 3D view ---- */
+const pumpF=$('#pumpf');let PA=null,pumpStarted=false;
+function pumpLoad(){if(!pumpStarted){pumpStarted=true;pumpF.src='pump.html'}}
+pumpF.addEventListener('load',()=>{try{PA=pumpF.contentWindow.PUMPAPI||null}catch(e){PA=null}pumpHeads()});
+window.addEventListener('message',e=>{if(e.source===pumpF.contentWindow&&e.data&&e.data.pumpH)pumpF.style.height=Math.max(700,e.data.pumpH+4)+'px'});
+function bldHeads(c){
+  const flow=cfg().inputs.some(g=>(g.key==='flow'||/flow/i.test(g.name))&&g.points.some(p=>S.on.has(p.id)));
+  const rel=c.matched.some(r=>r.type==='fire'&&r.when.some(w=>w.groups.includes('pa')));
+  return (rel?8:0)+(flow?4:0);
+}
+function pumpHeads(){if(PA&&LASTC)try{PA.setBuilding(bldHeads(LASTC))}catch(e){}}
+window.FACP={show3d(){setMode('3d').then(()=>{if(F3)F3.focusPump()})},showPump(){setMode('pump')}};
+setTimeout(pumpLoad,700);
+setInterval(()=>{
+  if(!PA)return;let st;try{st=PA.state()}catch(e){return}
+  if(F3)F3.setPump(st);
+  if(view3){
+    $('#vp-p').textContent=(st.P).toFixed(1)+' bar';
+    $('#vp-t').textContent='Tank '+Math.round(st.tank.pct*100)+'%'+(st.tank.empty?' · EMPTY':st.tank.low?' · LOW':'');
+    document.querySelectorAll('.vp-c').forEach(el=>{const p=st.pumps[+el.dataset.k];
+      el.className='vp-c '+(!p.power?'off':p.fault?'bad':p.run?'run':p.mode==='OFF'?'off':'');
+      el.title=p.name+': '+(!p.power?'no power':p.fault?'start call not answered':p.run?'running':p.mode==='OFF'?'selector off':'standby')});
+  }
+},120);
+$('#k-vpump').addEventListener('click',()=>setMode('pump'));
+$('#v3-pumphud').addEventListener('click',()=>setMode('pump'));
+$('#v3-pump').addEventListener('click',()=>F3&&F3.focusPump());
+$('#k-v2d').addEventListener('click',()=>setMode('2d'));
+$('#k-v3d').addEventListener('click',()=>setMode('3d'));
 $('#k3-ack').addEventListener('click',doAck);$('#k3-sil').addEventListener('click',doSil);$('#k3-reset').addEventListener('click',doReset);
 $('#v3-floors').addEventListener('click',e=>{const b=e.target.closest('[data-fl]');if(!b||!F3)return;
   $('#v3-floors').querySelectorAll('[data-fl]').forEach(x=>x.setAttribute('aria-pressed',x===b));F3.setFloor(+b.dataset.fl)});
@@ -1147,7 +1195,7 @@ $('#v3-valve').addEventListener('click',()=>F3&&F3.focusValve());
 $('#v3-reset').addEventListener('click',()=>F3&&F3.resetView());
 
 renderLog();build();load();
-if(location.hash==='#3d')setView(true);
+if(location.hash==='#3d')setMode('3d');else if(location.hash==='#pump')setMode('pump');
 </script>
 
 </body>
