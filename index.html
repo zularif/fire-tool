@@ -396,6 +396,8 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 .v3-load{position:absolute;inset:0;display:grid;place-items:center;padding:16px;text-align:center;color:var(--muted);font-size:14px}
 .v3-bot .btn.attn{border-color:var(--fire);box-shadow:0 0 0 2px var(--fire-soft)}
 .v3-gap{flex:1 1 8px}
+.v3-leg{position:absolute;right:10px;top:8px;z-index:2;display:flex;flex-direction:column;gap:3px;padding:6px 9px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);pointer-events:none;opacity:.95}
+.v3-leg i{display:inline-block;width:18px;height:6px;border-radius:2px;margin-right:6px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -419,6 +421,7 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
     <div class="v3-top"><span class="v3-pill s0" id="v3-pill">Normal</span><span class="v3-txt" id="v3-txt">System normal. No devices in alarm.</span></div>
     <div class="v3-stage" id="v3-stage">
       <div class="v3-load" id="v3-load">Loading 3D view…</div>
+      <div class="v3-leg" aria-label="Pipe colours"><span><i style="background:#e5392f"></i>Wet sprinkler · Ground</span><span><i style="background:#7a1717"></i>Pre-action sprinkler · L1–L2</span><span><i style="background:#4fa0ff"></i>Pre-action filled after release</span></div>
       <div class="v3-hint">Drag to orbit · scroll or pinch to zoom · tap a detector, call point or valve to trigger it</div>
     </div>
     <div class="v3-bot">
@@ -1119,7 +1122,7 @@ function f3Sync(c){
 }
 function f3Init(){
   if(F3)return Promise.resolve(F3);
-  if(!f3Pending)f3Pending=import('./fire3d.js?v=2').then(m=>{
+  if(!f3Pending)f3Pending=import('./fire3d.js?v=3').then(m=>{
     m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;const l=$('#v3-load');if(l)l.remove();return m;
   }).catch(e=>{f3Pending=null;const l=$('#v3-load');if(l)l.textContent='3D view could not load ('+((e&&e.message)||e)+'). Check that fire3d.js is uploaded next to index.html and that this browser supports WebGL.';return null});
   return f3Pending;

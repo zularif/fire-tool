@@ -12,7 +12,7 @@ import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 const FH = 4, W = 36, D = 22;                       // floor height, building width (x), depth (z) in metres
 const COL = {fire: 0xff3b30, pre: 0xff9f0a, sup: 0xffc400};
 const TAU = Math.PI * 2;
-const SX = 23.5, SZ = 9.6, RX = 16.5, YC = 3.5;   // outdoor valve station origin, inside riser x, sprinkler pipe height above each floor
+const SX = 23.5, SZ = 9.6, ZW = -3.6, RX = 16.5, YC = 3.5;   // outdoor valve station origin, inside riser x, sprinkler pipe height above each floor
 
 let host, api, renderer, scene, camera, controls, tipEl, canvas;
 const rc = new Raycaster(), ndc = new Vector2();
@@ -66,7 +66,7 @@ function makeMats() {
   M.core = std(0x8fa3b8, {transparent: true, opacity: .26, depthWrite: false, side: DoubleSide});
   M.line = new LineBasicMaterial({color: 0x6b7a89, transparent: true, opacity: .6});
   M.red = std(0xd32f2f); M.white = std(0xf1f3f5); M.grey = std(0x8a949e); M.dgrey = std(0x4b5560); M.gold = std(0xd9a21b, {metalness: .5});
-  M.pipe = std(0xaab3bb, {metalness: .45, roughness: .45}); M.pipeD = std(0xaab3bb, {metalness: .45, roughness: .45});
+  M.pipe = std(0xaab3bb, {metalness: .45, roughness: .45}); M.pipeD = std(0x7a1717, {metalness: .3, roughness: .5}); M.pipeW = std(0xe5392f, {metalness: .2, roughness: .5});
   M.conc = std(0xaeb6bd, {roughness: .95}); M.black = std(0x1d2126, {roughness: .6}); M.red2 = std(0xa82020); M.blue2 = std(0x1f5fb0);
   M.orange = std(0xf08a24); M.yellow = std(0xf6c026); M.blue = std(0x2b6cc4); M.green = std(0x2e9d4f);
 }
@@ -139,7 +139,7 @@ const SL = {
   smoke: [[-12, 3.75, 3], [-9, 7.75, -3], [6, 7.75, 7], [-6, 11.75, 4], [13, 11.75, 3], [-14, 3.75, -3], [0, 7.75, 3], [10, 7.75, -5]],
   heat: [[14, 11.75, -6], [-14, 7.75, 7], [0, 3.75, 8], [-12, 11.75, -4]],
   mcp: [[-17.8, 1.4, 4, Math.PI / 2], [-4.2, 5.4, -3.5, Math.PI / 2], [-4.2, 9.4, -3.5, Math.PI / 2], [17.8, 1.4, 6, -Math.PI / 2]],
-  valve: [[SX + 1.15, 2.95, SZ + .95, 0]], flow: [[SX - 2.6, YC + .34, SZ, 0]],
+  valve: [[SX + 1.15, 2.95, SZ + .95, 0]], flow: [[SX - 2.6, YC + .34, SZ + ZW, 0]],
   button: [[7.75, 1.4, -4.5, Math.PI / 2], [7.75, 1.4, -6, Math.PI / 2]],
   fmSmoke: [[12, 3.75, -6.5], [10, 3.75, -9]], fmHeat: [[14, 3.75, -8.5], [14, 3.75, -5]]
 };
@@ -355,7 +355,7 @@ function tickParticles(dt) {
 
 /* ---------------------------------------------------------------- build / rebuild from config */
 /* ---------------------------------------------------------------- outdoor pre-action valve station + sprinkler network */
-const HEADS = [], DRY = new Color(0xaab3bb), WET = new Color(0x4fa0ff), UPV = new Vector3(0, 1, 0);
+const HEADS = [], DRY = new Color(0x7a1717), WET = new Color(0x4fa0ff), UPV = new Vector3(0, 1, 0);
 let stn = null, wet = 0, airF = .6;
 function pipe(par, a, b, r, m) {
   const A = new Vector3(a[0], a[1], a[2]), B = new Vector3(b[0], b[1], b[2]), len = A.distanceTo(B); if (len < 1e-4) return;
@@ -394,7 +394,7 @@ function buildStation() {
   const R = M.red, P = M.pipe, D = M.pipeD;
   const add = (o, x, y, z) => { o.position.set(x, y, z); st.add(o); return o; };
   const ax = o => { o.rotation.z = Math.PI / 2; return o; };
-  outline(add(box(9.4, .3, 8.6, M.conc), 1.2, -.15, 1.1), st);
+  outline(add(box(9.4, .3, 10.8, M.conc), 1.2, -.15, .1), st);
   // water supply from outside, gate valve, strainer
   run(st, [[7.4, .4, 0], [0, .4, 0], [0, 2.0, 0]], .2, P);
   label('WATER SUPPLY', .6, st, 5.4, 1.15, 0);
@@ -430,23 +430,43 @@ function buildStation() {
   // connection into the building: through the wall, then risers, mains, branches and heads on each floor
   add(ax(cyl(.28, .3, M.dgrey, 20)), -5.5, YC, 0);
   run(st, [[0, YC, 0], [-7, YC, 0]], .14, D);
-  label('TO SPRINKLERS', .6, st, -3.2, YC + 1.0, 0);
+  label('TO PRE-ACTION SPRINKLERS', .65, st, -3.2, YC + 1.0, 0);
   label('PRE-ACTION VALVE', .95, st, 1.3, 4.6, 0); label('OUTSIDE BUILDING', .6, st, 1.3, 4.05, 0);
+  // wet-pipe system (ground floor): its own alarm check valve outside, red pipework, flow switch FS-01
+  const W = M.pipeW;
+  run(st, [[4.0, .4, 0], [4.0, .4, ZW], [0, .4, ZW], [0, 1.65, ZW]], .2, P);
+  add(ax(cyl(.27, .5, M.dgrey, 16)), 2.0, .4, ZW); add(cyl(.16, .35, M.dgrey, 12), 2.0, .72, ZW); add(cyl(.03, .55, M.grey, 8), 2.0, 1.1, ZW);
+  const wh2 = add(new Mesh(new TorusGeometry(.25, .035, 8, 24), M.black), 2.0, 1.38, ZW); wh2.rotation.x = Math.PI / 2;
+  add(box(.5, .02, .035, M.black), 2.0, 1.38, ZW); add(box(.035, .02, .5, M.black), 2.0, 1.38, ZW);
+  add(cyl(.3, 1.0, R, 24), 0, 1.15, ZW); [.68, 1.62].forEach(y => add(cyl(.4, .1, M.grey, 24), 0, y, ZW));
+  add(ax(cyl(.3, .5, R, 24)), .45, 1.0, ZW); add(ax(cyl(.2, .08, M.grey, 20)), .76, 1.0, ZW);
+  pipe(st, [0, 1.65, ZW], [0, YC, ZW], .2, W); add(new Mesh(new SphereGeometry(.23, 12, 10), W), 0, YC, ZW);
+  run(st, [[.2, 1.4, ZW], [.2, 1.4, ZW - .55], [.95, 1.4, ZW - .55], [.95, 1.6, ZW - .55]], .04, P); ball(st, .55, 1.4, ZW - .55);
+  add(cyl(.2, .7, M.grey, 18), .95, 1.95, ZW - .55);
+  run(st, [[.95, 2.3, ZW - .55], [.95, 2.6, ZW - .55], [1.5, 2.6, ZW - .55]], .04, P); add(sph(.2, M.gold), 1.7, 2.6, ZW - .55);
+  const sg = mkGauge('SUPPLY'), yg = mkGauge('SYSTEM');
+  run(st, [[.2, .95, ZW + .3], [.2, .95, ZW + .8], [.9, .95, ZW + .8]], .04, P); add(sg.g, .95, .95, ZW + .8);
+  run(st, [[.2, 2.0, ZW], [.2, 2.0, ZW + .5], [.9, 2.0, ZW + .5]], .04, W); add(yg.g, .95, 2.0, ZW + .5);
+  sg.piv.rotation.x = yg.piv.rotation.x = (135 - .72 * 270) * Math.PI / 180;
+  add(ax(cyl(.28, .3, M.dgrey, 20)), -5.5, YC, ZW); run(st, [[0, YC, ZW], [-7, YC, ZW]], .14, W);
+  label('TO WET SPRINKLERS', .55, st, -3.2, YC + 1.0, ZW); label('WET ALARM VALVE', .8, st, 1.0, 4.0, ZW);
   for (let fi = 0; fi < 3; fi++) {
-    const y = fi * FH + YC;
+    const y = fi * FH + YC, wetSys = fi === 0, MM = wetSys ? W : D, zm = wetSys ? SZ + ZW : SZ;
+    const eP = sph(.16, D); eP.position.set(RX, YC, SZ); dynG[fi].add(eP);
     if (fi > 0) runF(fi, [[RX, y - FH, SZ], [RX, y, SZ]], .12, D);
-    const e = sph(.16, D); e.position.set(RX, YC, SZ); dynG[fi].add(e);
-    runF(fi, [[RX, y, SZ], [-11.5, y, SZ]], .1, D);
+    if (wetSys) { const eW = sph(.16, W); eW.position.set(RX, YC, zm); dynG[fi].add(eW); }
+    runF(fi, [[RX, y, zm], [-11.5, y, zm]], .1, MM);
+    const zs = wetSys ? 9.5 : SZ, hz = wetSys ? [9, 3.5, -.5, -4.5] : [7, 2, -3];
     [11, 0, -11].forEach(x => {
-      const zEnd = fi === 0 && x > 8 ? 2 : -3;
-      runF(fi, [[x, y, SZ], [x, y, zEnd]], .07, D);
-      [7, 2, -3].forEach(z => {
+      const zEnd = wetSys ? (x > 8 ? -2 : -4.5) : -3;
+      runF(fi, [[x, y, zs], [x, y, zEnd]], .07, MM);
+      hz.forEach(z => {
         if (z < zEnd - .01) return;
         const hd = new Group(); hd.position.set(x, YC, z); dynG[fi].add(hd);
         const dp = cyl(.025, .12, M.gold, 8); dp.position.y = -.06; hd.add(dp);
         const bulb = sph(.032, M.red); bulb.position.y = -.14; hd.add(bulb);
         const df = cyl(.09, .012, M.gold, 12); df.position.y = -.2; hd.add(df);
-        HEADS.push({fi, p: new Vector3(x, fi * FH + YC - .2, z), bulb, acc: 0});
+        HEADS.push({fi, sys: wetSys ? 'wet' : 'pre', p: new Vector3(x, fi * FH + YC - .2, z), bulb, acc: 0});
       });
     });
   }
@@ -454,22 +474,25 @@ function buildStation() {
 }
 function stationFrame(dt) {
   if (!stn) return;
-  const rel = !!L.release, pa = IN.some(d => d.style === 'valve' && d.on);
+  const rel = !!L.release, pa = IN.some(d => d.style === 'valve' && d.on), flow = IN.some(d => d.style === 'flow' && d.on);
   wet = approach(wet, rel ? 1 : 0, .4, dt);
   M.pipeD.color.copy(DRY).lerp(WET, wet); M.pipeD.emissive.setHex(0x1565ff); M.pipeD.emissiveIntensity = .5 * wet;
   airF = approach(airF, rel ? .72 : pa ? .04 : .6, .35, dt);
   stn.airN.rotation.x = (135 - airF * 270) * Math.PI / 180; stn.watN.rotation.x = (135 - .72 * 270) * Math.PI / 180;
   stn.fw.rotation.x += (pa && !rel ? 14 : 0) * dt;
   stn.rh.material.opacity = rel ? .55 + .2 * Math.sin(T * 8) : 0;
-  const al = IN.filter(d => d.on && (d.style === 'smoke' || d.style === 'heat' || d.style === 'mcp')), cand = [];
-  if (rel) for (const h of HEADS) {
-    let m = 99; for (const a of al) if (floorOf(a.wpos.y) === h.fi) m = Math.min(m, Math.hypot(a.wpos.x - h.p.x, a.wpos.z - h.p.z));
-    if (m < 9) cand.push([m, h]);
-  }
-  cand.sort((a, b) => a[0] - b[0]); const open = new Set(cand.slice(0, 8).map(c => c[1]));
+  const al = IN.filter(d => d.on && (d.style === 'smoke' || d.style === 'heat' || d.style === 'mcp'));
+  const near = (sys, on, cap) => {
+    if (!on) return [];
+    const c = [], pass = any => { for (const h of HEADS) if (h.sys === sys) { let m = 99; for (const a of al) if (any || floorOf(a.wpos.y) === h.fi) m = Math.min(m, Math.hypot(a.wpos.x - h.p.x, a.wpos.z - h.p.z)); if (m < (any ? 99 : 9)) c.push([m, h]); } };
+    pass(false); if (!c.length) pass(true);
+    if (!c.length) for (const h of HEADS) if (h.sys === sys) c.push([Math.hypot(h.p.x, h.p.z), h]);
+    c.sort((a, b) => a[0] - b[0]); return c.slice(0, cap).map(x => x[1]);
+  };
+  const open = new Set([...near('pre', rel, 8), ...near('wet', flow, 4)]);
   for (const h of HEADS) {
     const o = open.has(h); h.bulb.visible = !o;
-    if (o && wet > .6) { h.acc += dt * 30; while (h.acc >= 1) { h.acc--; emit('spray', h.p.x, h.p.y, h.p.z); } }
+    if (o && (h.sys === 'wet' || wet > .6)) { h.acc += dt * 30; while (h.acc >= 1) { h.acc--; emit('spray', h.p.x, h.p.y, h.p.z); } }
   }
 }
 
