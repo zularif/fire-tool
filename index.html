@@ -376,6 +376,26 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 .pban.s1 .pill,.pban.s2 .pill{background:var(--warn)}.pban.s3 .pill{background:var(--fire)}
 .pban p{margin:0;flex:1;min-height:0;font-size:calc(16*var(--u));line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4}
 @media (max-width:520px){.topbar{align-items:flex-start}.topbar::before{flex-basis:100%}}
+/* 3D building view */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.seg .btn{border:0;border-radius:0}
+.seg .btn+.btn{border-left:1px solid var(--line)}
+.seg .btn[aria-pressed="true"],.v3-bot .btn[aria-pressed="true"]:not(#k3-sil){background:var(--accent);color:#fff}
+.v3d{margin-bottom:12px;border-radius:10px;overflow:hidden;background:var(--surface-2);box-shadow:0 0 0 1px var(--line),0 12px 32px -18px rgba(10,20,35,.35)}
+.v3-top,.v3-bot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;background:var(--surface)}
+.v3-top{border-bottom:1px solid var(--line)}
+.v3-bot{border-top:1px solid var(--line)}
+.v3-stage{position:relative;height:min(70vh,660px);min-height:380px;touch-action:none}
+.v3-stage canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+.v3-tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .12s;max-width:260px;padding:7px 10px;border-radius:6px;background:rgba(15,20,26,.93);color:#fff;font:500 12px/1.4 var(--f-body);z-index:3}
+.v3-pill{font:700 13px var(--f-head);letter-spacing:.06em;text-transform:uppercase;padding:4px 11px;border-radius:999px;color:#fff;background:var(--ok);white-space:nowrap}
+.v3-pill.s1,.v3-pill.s2{background:var(--warn)}
+.v3-pill.s3{background:var(--fire)}
+.v3-txt{font-size:13px;color:var(--muted);flex:1 1 220px;min-width:0}
+.v3-hint{position:absolute;left:10px;bottom:8px;z-index:2;font-size:11px;color:var(--muted);pointer-events:none;max-width:calc(100% - 20px)}
+.v3-load{position:absolute;inset:0;display:grid;place-items:center;padding:16px;text-align:center;color:var(--muted);font-size:14px}
+.v3-bot .btn.attn{border-color:var(--fire);box-shadow:0 0 0 2px var(--fire-soft)}
+.v3-gap{flex:1 1 8px}
 </style>
 </head>
 <body>
@@ -384,12 +404,41 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 <div class="wrap">
   <div class="topbar">
     <div class="top-actions">
+      <span class="seg" role="group" aria-label="View">
+        <button class="btn" id="k-v2d" type="button" aria-pressed="true">2D diagram</button>
+        <button class="btn" id="k-v3d" type="button" aria-pressed="false">3D building</button>
+      </span>
       <button class="btn" id="k-guide" type="button" aria-haspopup="dialog" aria-controls="guide-dialog">Quick guide</button>
       <button class="btn" id="k-about" type="button" aria-haspopup="dialog" aria-controls="about-dialog">Project Info</button>
       <button class="btn pri" id="k-edit">Edit devices &amp; logic</button>
     </div>
   </div>
   <div class="scroller"><div class="canvas" id="cv"></div></div>
+
+  <section class="v3d" id="v3d" hidden aria-label="3D building view">
+    <div class="v3-top"><span class="v3-pill s0" id="v3-pill">Normal</span><span class="v3-txt" id="v3-txt">System normal. No devices in alarm.</span></div>
+    <div class="v3-stage" id="v3-stage">
+      <div class="v3-load" id="v3-load">Loading 3D view…</div>
+      <div class="v3-hint">Drag to orbit · scroll or pinch to zoom · tap a detector, call point or valve to trigger it</div>
+    </div>
+    <div class="v3-bot">
+      <button class="btn" id="k3-ack" type="button">Acknowledge</button>
+      <button class="btn" id="k3-sil" type="button" aria-pressed="false">Signal silence</button>
+      <button class="btn dan" id="k3-reset" type="button">Reset</button>
+      <span class="v3-gap"></span>
+      <span class="seg" id="v3-floors" role="group" aria-label="Show floors">
+        <button class="btn" type="button" data-fl="3" aria-pressed="true">All</button>
+        <button class="btn" type="button" data-fl="0" aria-pressed="false">G</button>
+        <button class="btn" type="button" data-fl="1" aria-pressed="false">L1</button>
+        <button class="btn" type="button" data-fl="2" aria-pressed="false">L2</button>
+      </span>
+      <button class="btn" id="v3-walls" type="button" aria-pressed="true">Walls</button>
+      <button class="btn" id="v3-rot" type="button" aria-pressed="false">Auto-rotate</button>
+      <button class="btn" id="v3-focus" type="button">Focus alarm</button>
+      <button class="btn" id="v3-valve" type="button">Valve station</button>
+      <button class="btn" id="v3-reset" type="button">Reset view</button>
+    </div>
+  </section>
 
   <div class="bar">
     <div class="pane">
@@ -728,6 +777,7 @@ function render(c){
   $('#k-sil').setAttribute('aria-pressed',S.sil);$('#k-ack').setAttribute('aria-pressed',S.ack);
   $('#k-ack').disabled=!S.on.size||S.ack;$('#k-sil').disabled=S.top<2;$('#k-reset').disabled=!S.on.size;
   $('#k-ack').classList.toggle('attn',S.on.size>0&&!S.ack);
+  LASTC=c;if(F3&&view3)f3Sync(c);
 }
 function ruleSummary(){
   const C=cfg();
@@ -1050,7 +1100,51 @@ aboutClose.addEventListener('click',closeAbout);
 aboutDialog.addEventListener('click',e=>{if(e.target===aboutDialog)closeAbout()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!aboutDialog.hidden)closeAbout()});
 
+/* ---------- 3D building view (loads fire3d.js on first use) ---------- */
+let F3=null,f3Pending=null,view3=false,LASTC=null;
+function f3Describe(d){
+  if(d.kind==='in'){const f=findPoint(d.id);if(!f)return '';const on=S.on.has(d.id);
+    return `<b>${esc(d.id)}</b> · ${esc(f.g.name.replace(/ \(.*\)/,''))}${f.p.label?' · '+esc(f.p.label):''}<br>${esc(f.p.addr||'')} — ${on?'<b>IN ALARM</b> · tap to clear':'Normal · tap to trigger'}`}
+  const o=cfg().outputs.find(x=>x.key===d.key),st=$('#st-'+d.key);
+  return o?`<b>${esc(o.name)}</b><br>${esc(st?st.textContent:'Standby')}`:'';
+}
+function f3Sync(c){
+  const rank=c.top?TYPE[c.top.type].rank:0;
+  F3.update({C:cfg(),on:S.on,outState:c.outState,inState:c.inState,sil:S.sil,ack:S.ack,rank,release:c.matched.some(r=>r.type==='fire'&&r.when.some(w=>w.groups.includes('pa'))),
+    leds:{pre:c.matched.some(r=>r.type==='pre'),fire:rank===3,sup:c.matched.some(r=>r.type==='sup'),sil:rank>1&&S.sil},
+    scr:{h:$('#scr-h').textContent,c:$('#scr-c').textContent,l:c.pts.slice(0,5).map(x=>x.p.addr+' '+x.p.id)}});
+  [['ack','k-ack'],['sil','k-sil'],['reset','k-reset']].forEach(([k,s])=>{const a=$('#'+s),b=$('#k3-'+k);if(!a||!b)return;
+    b.disabled=a.disabled;b.setAttribute('aria-pressed',a.getAttribute('aria-pressed')||'false');b.classList.toggle('attn',a.classList.contains('attn'))});
+  const p=$('#v3-pill');p.textContent=$('#pill').textContent;p.className='v3-pill s'+rank;$('#v3-txt').textContent=$('#stage-txt').textContent;
+}
+function f3Init(){
+  if(F3)return Promise.resolve(F3);
+  if(!f3Pending)f3Pending=import('./fire3d.js?v=2').then(m=>{
+    m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;const l=$('#v3-load');if(l)l.remove();return m;
+  }).catch(e=>{f3Pending=null;const l=$('#v3-load');if(l)l.textContent='3D view could not load ('+((e&&e.message)||e)+'). Check that fire3d.js is uploaded next to index.html and that this browser supports WebGL.';return null});
+  return f3Pending;
+}
+async function setView(on){
+  view3=!!on;
+  $('.scroller').hidden=view3;$('#v3d').hidden=!view3;
+  $('#k-v2d').setAttribute('aria-pressed',!view3);$('#k-v3d').setAttribute('aria-pressed',view3);
+  try{history.replaceState(null,'',view3?'#3d':location.pathname+location.search)}catch(e){}
+  if(view3){const m=await f3Init();if(m&&view3){if(LASTC)f3Sync(LASTC);m.setActive(true)}}
+  else if(F3)F3.setActive(false);
+}
+$('#k-v2d').addEventListener('click',()=>setView(false));
+$('#k-v3d').addEventListener('click',()=>setView(true));
+$('#k3-ack').addEventListener('click',doAck);$('#k3-sil').addEventListener('click',doSil);$('#k3-reset').addEventListener('click',doReset);
+$('#v3-floors').addEventListener('click',e=>{const b=e.target.closest('[data-fl]');if(!b||!F3)return;
+  $('#v3-floors').querySelectorAll('[data-fl]').forEach(x=>x.setAttribute('aria-pressed',x===b));F3.setFloor(+b.dataset.fl)});
+$('#v3-walls').addEventListener('click',e=>{const b=e.currentTarget,v=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',v);F3&&F3.setWalls(v)});
+$('#v3-rot').addEventListener('click',e=>{const b=e.currentTarget,v=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',v);F3&&F3.setAuto(v)});
+$('#v3-focus').addEventListener('click',()=>{if(F3&&!F3.focusAlarm())log('ok','3D VIEW · no device in alarm to focus on')});
+$('#v3-valve').addEventListener('click',()=>F3&&F3.focusValve());
+$('#v3-reset').addEventListener('click',()=>F3&&F3.resetView());
+
 renderLog();build();load();
+if(location.hash==='#3d')setView(true);
 </script>
 
 </body>
