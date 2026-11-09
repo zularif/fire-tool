@@ -482,6 +482,7 @@ label.f{font-size:12px;letter-spacing:.04em;text-transform:uppercase}
       <button class="btn" id="v3-focus" type="button">Focus alarm</button>
       <button class="btn" id="v3-valve" type="button">Valve station</button>
       <button class="btn" id="v3-pump" type="button">Pump room</button>
+      <button class="btn" id="v3-ctrl" type="button">Control room</button>
       <button class="btn" id="v3-reset" type="button">Reset view</button>
     </div>
   </section>
@@ -1154,16 +1155,17 @@ function f3Describe(d){
   if(d.kind==='in'){const f=findPoint(d.id);if(!f)return '';const on=S.on.has(d.id);
     return `<b>${esc(d.id)}</b> · ${esc(f.g.name.replace(/ \(.*\)/,''))}${f.p.label?' · '+esc(f.p.label):''}<br>${esc(f.p.addr||'')} — ${on?'<b>IN ALARM</b> · tap to clear':'Normal · tap to trigger'}`}
   const o=cfg().outputs.find(x=>x.key===d.key),st=$('#st-'+d.key);
-  return o?`<b>${esc(o.name)}</b><br>${esc(st?st.textContent:'Standby')}`:'';
+  return o?`<b>${esc(dn3(o.name))}</b><br>${esc(st?st.textContent:'Standby')}`:'';
 }
+const dn3=n=>/iboss/i.test(n)?'SPKA':n;
 function f3Links(c){return c.matched.map(r=>{const ins=new Set();r.when.forEach(x=>cset(x).forEach(id=>{if(S.on.has(id))ins.add(id)}));return {t:r.type,ins:[...ins],outs:r.outputs.filter(o=>c.outState[o])}})}
 const vaN={};let vaSig='';
 function vaRender(c){
   const C=cfg(),sil=S.sil;
   const ins=c.pts.map(({g,p})=>({id:p.id,name:itemName(g,p),st:c.inState[g.key]||'fire',fl:F3?F3.where('in',p.id):''}));
   const outs=Object.keys(c.outState).map(k=>{const o=C.outputs.find(x=>x.key===k);if(!o)return null;
-    return {key:k,name:o.name.replace(/\s*\(.*\)/,''),st:c.outState[k],fl:F3?F3.where('out',k):'',note:sil&&(o.kind==='audible'||o.kind==='av'||o.kind==='voice')?'silenced':''}}).filter(Boolean);
-  const pend=[...new Map(c.counting.map(x=>[x.o,x])).values()].map(x=>{const o=C.outputs.find(y=>y.key===x.o);return o?o.name.replace(/\s*\(.*\)/,'')+' in '+x.left+'s':''}).filter(Boolean);
+    return {key:k,name:dn3(o.name).replace(/\s*\(.*\)/,''),st:c.outState[k],fl:F3?F3.where('out',k):'',note:sil&&(o.kind==='audible'||o.kind==='av'||o.kind==='voice')?'silenced':''}}).filter(Boolean);
+  const pend=[...new Map(c.counting.map(x=>[x.o,x])).values()].map(x=>{const o=C.outputs.find(y=>y.key===x.o);return o?dn3(o.name).replace(/\s*\(.*\)/,'')+' in '+x.left+'s':''}).filter(Boolean);
   const sig=JSON.stringify([ins,outs,pend]);if(sig===vaSig)return;vaSig=sig;
   const li=(a,tag,id,st,name,fl,note)=>`<li><button type="button" data-${tag}="${esc(id)}"><i class="${st}"></i><span>${esc(name)}</span>${note?`<small>${note}</small>`:''}${fl?`<small>${esc(fl)}</small>`:''}</button></li>`;
   $('#va-in').innerHTML=ins.length?ins.map(d=>li(0,'in',d.id,d.st,d.id+' · '+d.name.replace(new RegExp('\\s*'+d.id+'$'),''),d.fl,'')).join(''):'<li class="empty">No input in alarm</li>';
@@ -1184,7 +1186,7 @@ function f3Sync(c){
 }
 function f3Init(){
   if(F3)return Promise.resolve(F3);
-  if(!f3Pending)f3Pending=import('./fire3d.js?v=6').then(m=>{
+  if(!f3Pending)f3Pending=import('./fire3d.js?v=7').then(m=>{
     m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;const l=$('#v3-load');if(l)l.remove();return m;
   }).catch(e=>{f3Pending=null;const l=$('#v3-load');if(l)l.textContent='3D view could not load ('+((e&&e.message)||e)+'). Check that fire3d.js is uploaded next to index.html and that this browser supports WebGL.';return null});
   return f3Pending;
@@ -1233,6 +1235,7 @@ $('#v3-act').addEventListener('click',e=>{const b=e.target.closest('button[data-
   if(b.dataset.in)F3.focusDev('in',b.dataset.in);else{const k=b.dataset.out;vaN[k]=(vaN[k]||0)+1;F3.focusDev('out',k,vaN[k]-1)}});
 $('#v3-pumphud').addEventListener('click',()=>setMode('pump'));
 $('#v3-pump').addEventListener('click',()=>F3&&F3.focusPump());
+$('#v3-ctrl').addEventListener('click',()=>F3&&F3.focusControl());
 $('#k-v2d').addEventListener('click',()=>setMode('2d'));
 $('#k-v3d').addEventListener('click',()=>setMode('3d'));
 $('#k3-ack').addEventListener('click',doAck);$('#k3-sil').addEventListener('click',doSil);$('#k3-reset').addEventListener('click',doReset);
