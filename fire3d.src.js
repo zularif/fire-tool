@@ -77,6 +77,7 @@ function makeMats() {
   M.pipe = std(0xaab3bb, {metalness: .45, roughness: .45}); M.pipeD = std(0x7a1717, {metalness: .3, roughness: .5}); M.pipeW = std(0xe5392f, {metalness: .2, roughness: .5});
   M.conc = std(0xaeb6bd, {roughness: .95}); M.black = std(0x1d2126, {roughness: .6}); M.red2 = std(0xa82020); M.blue2 = std(0x1f5fb0);
   M.pipeP = std(0xaab3bb, {metalness: .45, roughness: .45}); M.tankShell = std(0x9fc3e6, {transparent: true, opacity: .2, depthWrite: false, side: DoubleSide}); M.water = std(0x2f8fd8, {transparent: true, opacity: .75, depthWrite: false, roughness: .2});
+  M.crf = std(0x3f6a94, {transparent: true, opacity: .32, depthWrite: false}); M.wood = std(0x8a6b45, {roughness: .7});
   M.orange = std(0xf08a24); M.yellow = std(0xf6c026); M.blue = std(0x2b6cc4); M.green = std(0x2e9d4f);
 }
 function applyTheme() {
@@ -87,6 +88,62 @@ function applyTheme() {
   M.line.color.set(dark ? 0x9fb3c8 : 0x5f6f80); M.line.opacity = dark ? .55 : .6;
   M.glass.color.set(dark ? 0x5c8cc0 : 0x7aa6d6); M.wall.color.set(dark ? 0x6d88a6 : 0x9db4cc); M.core.color.set(dark ? 0x5f7690 : 0x8fa3b8);
   scene.userData.hemi.intensity = dark ? 1.05 : 1.25; scene.userData.grid.material.color.set(dark ? 0x37424d : 0xc3ccd5);
+}
+
+
+/* ---------------------------------------------------------------- control room (FACP, BMS wall screen, SPKA / BMS / alarm signal cabinets, operator desk) */
+const dn = n => /iboss/i.test(n) ? 'SPKA' : n;
+let crm = null;
+function buildControlRoom() {
+  const g0 = floors[0], X0 = -17.9, X1 = -9.4, Z0 = -10.9, Z1 = -4.4, cx = (X0 + X1) / 2, cz = (Z0 + Z1) / 2;
+  const wl = (w, d, x, z) => { const p = box(w, FH - .1, d, M.wall); p.position.set(x, FH / 2, z); g0.add(p); walls.push(p); };
+  wl(.15, 4.1, X1, -8.85); wl(.15, 1.2, X1, -5.0); wl(X1 - X0, .15, cx, Z1);
+  const fl = box(X1 - X0, .05, Z1 - Z0, M.crf); fl.position.set(cx, .03, cz); g0.add(fl);
+  label('CONTROL ROOM', 1.4, g0, cx + .6, .35, -5.2);
+  // BMS video wall on the north wall
+  const cv = document.createElement('canvas'); cv.width = 640; cv.height = 256; const tex = new CanvasTexture(cv);
+  const fr = box(4.8, 1.75, .06, M.black); fr.position.set(cx + .6, 2.25, Z0 + .06); g0.add(fr);
+  const sc = new Mesh(new BoxGeometry(4.64, 1.6, .02), new MeshBasicMaterial({map: tex})); sc.position.set(cx + .6, 2.25, Z0 + .1); g0.add(sc);
+  // operator desk, 3 monitors, chair
+  const dk = box(3.4, .07, 1.0, M.wood); dk.position.set(cx + .6, .74, -8.5); g0.add(dk);
+  [[-1.6, -.4], [1.6, -.4], [-1.6, .4], [1.6, .4]].forEach(([dx, dz]) => { const l = box(.06, .72, .06, M.dgrey); l.position.set(cx + .6 + dx, .36, -8.5 + dz); g0.add(l); });
+  const mons = [];
+  [-1.05, 0, 1.05].forEach(dx => {
+    const b = box(.62, .4, .04, M.black); b.position.set(cx + .6 + dx, 1.2, -8.72); g0.add(b);
+    const m = new MeshBasicMaterial({color: 0x2e9d4f}); const s2 = new Mesh(new BoxGeometry(.56, .34, .01), m); s2.position.set(cx + .6 + dx, 1.2, -8.695); g0.add(s2); mons.push(m);
+    const st = box(.05, .3, .05, M.dgrey); st.position.set(cx + .6 + dx, .93, -8.72); g0.add(st);
+    const kb = box(.42, .02, .15, M.dgrey); kb.position.set(cx + .6 + dx, .79, -8.2); g0.add(kb);
+  });
+  const sd = cyl(.3, .07, M.dgrey, 16); sd.position.set(cx + .6, .5, -7.2); g0.add(sd); const bk = box(.5, .55, .06, M.dgrey); bk.position.set(cx + .6, .85, -6.95); g0.add(bk);
+  const ps = cyl(.04, .45, M.grey, 8); ps.position.set(cx + .6, .25, -7.2); g0.add(ps); const bs = cyl(.28, .04, M.dgrey, 5); bs.position.set(cx + .6, .03, -7.2); g0.add(bs);
+  // small status lamp over the door
+  crm = {mons, cv, tex, key: ''};
+}
+function drawCtrl() {
+  const q = crm, x = q.cv.getContext('2d'), rk = L.rank, fl = new Set(); IN.forEach(d => { if (d.on && d.wpos) fl.add(floorOf(d.wpos.y)); });
+  const bg = rk >= 3 ? '#2a0c0c' : rk === 2 ? '#2a1d08' : rk === 1 ? '#262208' : '#08161d', fg = rk >= 3 ? '#ff7a70' : rk === 2 ? '#ffc266' : rk === 1 ? '#ffe066' : '#6be39a';
+  x.fillStyle = bg; x.fillRect(0, 0, 640, 256); x.textBaseline = 'middle';
+  x.fillStyle = '#8fa3b5'; x.font = '600 20px Arial'; x.fillText('BMS · BUILDING STATUS', 18, 22);
+  x.fillStyle = fg; x.font = '700 44px Arial'; x.fillText(rk >= 3 ? 'FIRE ALARM' : rk === 2 ? 'PRE-ALARM' : rk === 1 ? 'SUPERVISORY' : 'ALL NORMAL', 18, 66);
+  [['L2', 2], ['L1', 1], ['G', 0]].forEach(([n, f], i) => {
+    const y = 108 + i * 42, al = fl.has(f); x.fillStyle = al ? '#a8261d' : '#16402a'; x.fillRect(18, y, 260, 34);
+    x.fillStyle = '#fff'; x.font = '700 22px Arial'; x.fillText(n, 30, y + 18); x.font = '600 18px Arial'; x.fillText(al ? 'ALARM' : 'OK', 180, y + 18);
+  });
+  const sg = (cfgRef ? cfgRef.outputs : []).filter(o => o.kind === 'signal').slice(0, 4);
+  x.fillStyle = '#8fa3b5'; x.font = '600 16px Arial'; x.fillText('SIGNALS SENT', 330, 108);
+  sg.forEach((o, i) => { const on = !!L.outState[o.key], y = 140 + i * 30; x.fillStyle = on ? '#ff7a70' : '#3d5266'; x.beginPath(); x.arc(344, y, 8, 0, TAU); x.fill(); x.fillStyle = on ? '#fff' : '#9fb0bf'; x.font = '600 19px Arial'; x.fillText(dn(o.name).replace(/\s*\(.*\)/, '').slice(0, 24), 362, y); });
+  const pm = L.pump; if (pm) { x.fillStyle = '#8fa3b5'; x.font = '600 16px Arial'; x.fillText('PUMPS ' + (pm.pumps.some(p => p.run) ? 'RUNNING' : 'STANDBY') + ' · ' + pm.P.toFixed(1) + ' bar · TANK ' + Math.round(pm.tank.pct * 100) + '%', 330, 246); }
+  q.tex.needsUpdate = true;
+}
+function ctrlFrame() {
+  if (!crm) return; const rk = L.rank;
+  const col = rk >= 3 ? (Math.sin(T * 8) > 0 ? 0xff3b30 : 0x7a1717) : rk === 2 ? 0xff9f0a : rk === 1 ? 0xffc400 : 0x2e9d4f; crm.mons.forEach(m => m.color.setHex(col));
+  const pm = L.pump, key = rk + '|' + IN.map(d => d.on ? 1 : 0).join('') + '|' + Object.keys(L.outState).join(',') + '|' + (pm ? pm.pumps.some(p => p.run) + ':' + Math.round(pm.P * 10) + ':' + Math.round(pm.tank.pct * 100) : '') + '|' + (cfgRef ? cfgRef.outputs.length : 0);
+  if (key !== crm.key) { crm.key = key; drawCtrl(); }
+}
+export function focusControl() {
+  const t1 = new Vector3(-13.6, 1.4, -8), off = new Vector3(.35, .45, .85).normalize().multiplyScalar(camera.aspect < .9 ? 24 : 13);
+  floorCap = Math.max(floorCap, 0); tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)};
 }
 
 /* ---------------------------------------------------------------- building */
@@ -114,7 +171,7 @@ function buildBuilding() {
   const gr = new GridHelper(70, 35, 0x8a949e, 0xc3ccd5); gr.position.y = -.32; gr.material.transparent = true; gr.material.opacity = .5; scene.add(gr); scene.userData.grid = gr;
   // room / floor labels
   label('FM200 ROOM', 1.5, floors[0], 12, .35, -7);
-  label('LOBBY · FACP', 1.5, floors[0], -11, .35, 5); label('STAIR', 1.3, floors[0], -2, .35, -8.6); label('LIFT', 1.3, floors[0], 3.5, .35, -8);
+  label('LOBBY', 1.5, floors[0], -11, .35, 5); buildControlRoom(); label('STAIR', 1.3, floors[0], -2, .35, -8.6); label('LIFT', 1.3, floors[0], 3.5, .35, -8);
   [['G', 0], ['L1', 1], ['L2', 2], ['ROOF', 3]].forEach(([t, i]) => label(t, 2.2, floors[i], -21, 1, 11.4));
 }
 
@@ -305,10 +362,13 @@ function mkOut(o, C) {
     const d = mk(() => { const s = sig(); if (s.on !== was) { was = s.on; draw(s.on); } h.material.opacity = s.on ? .55 : 0; h.material.color.setHex(0xffb020); });
     addPick(g, d, 1.2);
   } else if (type === 'signal') {
-    const i = nth('sig', [0, 1, 2, 3, 4, 5, 6, 7])[0], g = new Group(), b = box(.28, .36, .5, M.dgrey); g.add(b); const l = sph(.07, ledMat()); l.position.set(.17, .08, 0); g.add(l);
-    label(k.toUpperCase().slice(0, 8), .42, g, 0, .55, 0); put(g, -17.65, 2.2 + (i % 4) * .0, -9.6 + i * .62 * 0, 0); g.position.set(-17.65, 2.15, -9.8 + (i % 6) * .62);
+    const i = nth('sig', [0, 1, 2, 3])[0], g = new Group(), b = box(.7, 1.7, .5, M.dgrey); b.position.y = .85; g.add(b); outline(b, g);
+    const l = sph(.09, ledMat()); l.position.set(0, 1.42, .27); g.add(l);
+    [0, 1, 2].forEach(r => [-.2, 0, .2].forEach(c => { const d2 = sph(.025, M.grey); d2.position.set(c, 1.0 - r * .13, .26); g.add(d2); }));
+    const pl = box(.5, .2, .02, M.white); pl.position.set(0, .45, .26); g.add(pl);
+    label(/iboss/i.test(k + o.name) ? 'SPKA' : k.toUpperCase().slice(0, 8), .42, g, 0, 2.15, 0); g.position.set(-17.45, 0, -10.3 + i * .85); g.rotation.y = Math.PI / 2; dynG[0].add(g);
     const d = mk(() => { const s = sig(); l.material.emissive.setHex(s.on ? s.col : 0); l.material.emissiveIntensity = s.on ? 2.2 : 0; });
-    addPick(g, d, .6);
+    addPick(g, d, 1.0);
   } else {
     const sl = nth('gen', SLOT_GEN)[0], g = new Group(), b = box(.7, .5, .7, M.grey); g.add(b); const l = sph(.1, ledMat()); l.position.set(0, .35, 0); g.add(l);
     label(o.name.split(/[ (]/)[0].slice(0, 12), .5, g, 0, 1, 0); put(g, sl[0], sl[1], sl[2]); const h = halo(2.4); g.add(h);
@@ -633,7 +693,7 @@ const _v = new Vector3(), _w = new Vector3();
 function fxReset() {
   if (fxG) { fxG.parent && fxG.parent.remove(fxG); } fxG = new Group(); scene.add(fxG); tags = new Map(); linkLine = linkPts = null; linkSeg = []; needLinks = true;
 }
-const outName = k => { const o = cfgRef && cfgRef.outputs.find(x => x.key === k); return o ? o.name.replace(/\s*\(.*\)/, '') : k; };
+const outName = k => { const o = cfgRef && cfgRef.outputs.find(x => x.key === k); return o ? dn(o.name).replace(/\s*\(.*\)/, '') : k; };
 const arcP = (a, b, u, out) => { out.lerpVectors(a, b, u); out.y += Math.sin(u * Math.PI) * (1.2 + a.distanceTo(b) * .16); return out; };
 function buildLinks() {
   needLinks = false;
@@ -692,7 +752,7 @@ function frame(dt) {
   for (const d of OUT) d.upd(dt, T);
   const ll = s.leds || {}; if (facp) { setLed(facp.leds.pwr, true, 1.4); setLed(facp.leds.pre, ll.pre); setLed(facp.leds.fire, ll.fire); setLed(facp.leds.sup, ll.sup); setLed(facp.leds.sil, ll.sil); drawPanel(); }
   stationFrame(dt);
-  fxFrame(dt);
+  fxFrame(dt); ctrlFrame();
   tickParticles(dt);
 }
 function applyFloors() {
