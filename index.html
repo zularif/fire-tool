@@ -813,6 +813,17 @@ function evaluate(quiet){
   S.top=rank;
   render(c);audio(c);voice(c);
 }
+/* Panel state machine. Read-only view of S: one name per situation, plus which keys may be pressed.
+   level: normal | norule | supervisory | alarm1 | alarm2   (from S.top, or devices in alarm with no rule)
+   Transitions: device on -> unacked; Ack -> acked; Silence (alarm1/2 only) -> silenced (cleared by a higher level);
+   device off keeps state until the last one clears; Reset -> normal. */
+function panelState(){
+  const n=S.on.size,r=S.top;
+  const level=r===3?'alarm2':r===2?'alarm1':r===1?'supervisory':n?'norule':'normal';
+  const acked=n>0&&S.ack,silenced=r>1&&S.sil;
+  return {name:level+(n?(acked?'-acked':'-unacked'):'')+(silenced?'-silenced':''),level,acked,silenced,points:n,
+    can:{ack:n>0&&!S.ack,silence:r>=2,reset:n>0}};
+}
 function render(c){
   c=c||compute();const C=cfg();
   const rank=c.top?TYPE[c.top.type].rank:0, sup=c.matched.some(r=>r.type==='sup');
@@ -868,9 +879,11 @@ function render(c){
   const nOut=Object.keys(c.outState).length;
   $('#stage-txt').title=full;
   $('#stage-txt').textContent=c.top?`${c.top.name}. ${nOut} output${nOut===1?'':'s'} active${c.matched.length>1?` · ${c.matched.length-1} other rule${c.matched.length>2?'s':''} matched`:''}.`:(S.on.size?'Device in alarm, but no cause & effect rule matches it.':'System normal. No devices in alarm.')};
+  const P=panelState();
   $('#k-sil').setAttribute('aria-pressed',S.sil);$('#k-ack').setAttribute('aria-pressed',S.ack);
-  $('#k-ack').disabled=!S.on.size||S.ack;$('#k-sil').disabled=S.top<2;$('#k-reset').disabled=!S.on.size;
-  $('#k-ack').classList.toggle('attn',S.on.size>0&&!S.ack);
+  $('#k-ack').disabled=!P.can.ack;$('#k-sil').disabled=!P.can.silence;$('#k-reset').disabled=!P.can.reset;
+  $('#k-ack').classList.toggle('attn',P.can.ack);
+  $('#cv').dataset.panel=P.name;
   LASTC=c;if(F3&&view3)f3Sync(c);pumpHeads();
 }
 function ruleSummary(){
@@ -1261,7 +1274,12 @@ function bldHeads(c){
   return (rel?8:0)+(flow?4:0);
 }
 function pumpHeads(){if(PA&&LASTC)try{PA.setBuilding(bldHeads(LASTC))}catch(e){}}
-window.FACP={show3d(){setMode('3d').then(()=>{if(F3)F3.focusPump()})},showPump(){setMode('pump')}};
+window.FACP={show3d(){setMode('3d').then(()=>{if(F3)F3.focusPump()})},showPump(){setMode('pump')},
+  /* for scripts and AI agents: read the whole simulator state, and drive it without clicking */
+  state(){return {panel:panelState(),view:mode,pointsOn:[...S.on],rulesMatched:[...S.matched],scenario:sc?sc.id||true:null,pump:!!PA}},
+  press(k){const f={ack:doAck,silence:doSil,reset:doReset}[k];if(!f)throw new Error('press: ack | silence | reset');f();return panelState()},
+  toggle(id){if(!findPoint(id))throw new Error('unknown point '+id);toggle(id);return panelState()},
+  view(m){if(!['2d','3d','pump'].includes(m))throw new Error('view: 2d | 3d | pump');return setMode(m)}};
 setTimeout(pumpLoad,700);
 setInterval(()=>{
   if(!PA)return;let st;try{st=PA.state()}catch(e){return}
