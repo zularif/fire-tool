@@ -292,7 +292,11 @@ function mkOut(o, C) {
     });
   } else if (type === 'speaker') {
     nth('spk', SLOT_SPK, 4).forEach(sl => {
-      const g = new Group(), b = box(.4, .34, .2, M.grey); g.add(b); const c = new Mesh(new ConeGeometry(.2, .3, 18, 1, true), std(0xdfe3e7, {side: DoubleSide})); c.rotation.x = Math.PI / 2; c.position.z = .22; g.add(c);
+      /* tall dark cabinet with a big round grille and a blue band, so it cannot be mistaken for the round white ceiling detectors */
+      const g = new Group(), b = box(.36, .6, .24, std(0x232b36)); g.add(b);
+      const band = box(.38, .07, .26, std(0x2f7fe0, {emissive: 0x0a2a55})); band.position.y = .24; g.add(band);
+      const wf = cyl(.14, .05, std(0xe8ecf0), 22); wf.rotation.x = Math.PI / 2; wf.position.set(0, -.06, .13); g.add(wf);
+      const c = new Mesh(new ConeGeometry(.1, .1, 18, 1, true), std(0x4b5663, {side: DoubleSide})); c.rotation.x = -Math.PI / 2; c.position.set(0, -.06, .17); g.add(c);
       const rings = [0, 1, 2].map(i => { const r = new Mesh(new TorusGeometry(.4, .018, 6, 28), new MeshBasicMaterial({color: 0x4da3ff, transparent: true, opacity: 0})); g.add(r); return r; });
       put(g, sl[0], sl[1], sl[2], sl[3], 1.8);
       const d = mk((dt, t) => { const s = sig(), on = s.on && !s.sil; rings.forEach((r, i) => { const u = ((t * .9 + i / 3) % 1); r.position.z = .4 + u * 1.4; r.scale.setScalar(.7 + u * 1.5); r.material.opacity = on ? (1 - u) * .8 : 0; r.material.color.setHex(s.col === COL.fire ? 0x4da3ff : s.col); }); });
