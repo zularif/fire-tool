@@ -336,7 +336,8 @@ function mkOut(o, C) {
     const piv = new Group(); piv.position.set(.07, 0, 0); g.add(piv); const leaf = box(.08, 2.3, 1.32, std(0x6f8a5a)); leaf.position.set(0, 1.2, .68); piv.add(leaf);
     const sign = box(.06, .26, .7, new MeshStandardMaterial({color: 0x1d6b3a, emissive: 0x1d6b3a, emissiveIntensity: .6})); sign.position.set(.05, 2.75, .75); g.add(sign);
     const lock = sph(.07, new MeshStandardMaterial({color: 0xff3b30, emissive: 0xff3b30, emissiveIntensity: 1.2})); lock.position.set(.12, 1.1, 1.38); g.add(lock);
-    const h = halo(3); h.position.set(.2, 1.5, .8); g.add(h); put(g, -17.95, 0, 7.2);
+    const h = halo(3); h.position.set(.2, 1.5, .8); g.add(h); put(g, -1.25, 0, -11, -Math.PI / 2);   // emergency door at the foot of the staircase, in the back wall, opens outwards
+    label('EMERGENCY EXIT', .6, g, .1, 3.4, .75);
     const d = mk(dt => { const s = sig(); piv.rotation.y = approach(piv.rotation.y, s.on ? -1.75 : 0, 2.2, dt); lock.material.color.setHex(s.on ? 0x34c759 : 0xff3b30); lock.material.emissive.setHex(s.on ? 0x34c759 : 0xff3b30); sign.material.emissiveIntensity = s.on ? 2.2 : .6; h.material.opacity = s.on ? .4 : 0; h.material.color.setHex(0x34c759); });
     addPick(g, d, 1.8);
   } else if (type === 'ahu') {
@@ -783,6 +784,11 @@ export function extinguish(key) { const f = fires.find(x => !key || x.key === ke
 export function putOutFires(key) { if (fireG) killFire(key); }
 export function onFire(cb) { fireEv = cb; }
 export function fireList() { return fires.map(f => ({key: f.key, name: f.sp.name, floor: ['G', 'L1', 'L2'][f.sp.fi], size: f.size, state: f.state, note: f.note, hot: f.size > .5, sprayed: f.sprayed, fm: !!f.sp.fm})); }
+export function focusStairExit() {
+  floorCap = Math.max(floorCap, 0); applyFloors();
+  const t1 = new Vector3(-2, 1.2, -13), off = new Vector3(-.35, .4, -.85).normalize().multiplyScalar(camera.aspect < .9 ? 30 : 17);
+  tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)};
+}
 export function focusFire(key) {
   const f = fires.find(x => !key || x.key === key); if (!f) return false;
   if (f.sp.fi > floorCap) { floorCap = f.sp.fi; applyFloors(); }
@@ -802,17 +808,19 @@ const ROLE = {
   occupant: {name: 'Occupant', col: 0x2b6cc4, sp: 1.4, d: [3, 9]}, visitor: {name: 'Visitor', col: 0xf08a24, sp: 1.0, d: [12, 22]},
   warden: {name: 'Fire warden', col: 0x2e9d4f, sp: 1.6, d: [0, 2]}
 };
-const STX = -2, ASM = {x: 0, z: 17};
-const EXITS = [{x: -6, z: 11.6, via: []}, {x: -18.6, z: 6, via: [[-18.6, 14.5]]}, {x: 18.6, z: 6, via: [[18.6, 14.5]]}];
-const PPL = []; let pplG = null, pplMode = 'idle', pplClock = 0, pplEv = null, pplManual = false, pplArmed = true, fmWarned = false, pplSafeN = 0, pplMat = null;
+const STX = -2, ASM = {A: {x: 0, z: 17, dz: 1}, B: {x: -2, z: -17.8, dz: -1}};
+const EXITS = [{x: -6, z: 11.6, via: [], a: 'A'}, {x: -18.6, z: 6, via: [[-18.6, 14.5]], a: 'A'}, {x: 18.6, z: 6, via: [[18.6, 14.5]], a: 'A'}, {x: -2, z: -11.7, via: [[-2, -13.4]], a: 'B', stair: true}];
+const PPL = []; let pplG = null, pplMode = 'idle', pplClock = 0, pplEv = null, pplManual = false, pplArmed = true, fmWarned = false, pplAsm = {A: 0, B: 0}, pplMat = null;
 function pplInit() {
   if (pplG) return; pplG = new Group(); scene.add(pplG);
   pplMat = {skin: std(0xf0c8a0), cap: std(0xf6c026)}; Object.keys(ROLE).forEach(k => pplMat[k] = std(ROLE[k].col));
-  // assembly point: green disc, post and sign, and a green EXIT sign over each ground-floor door
-  const disc = new Mesh(new CircleGeometry(4.2, 40), new MeshBasicMaterial({color: 0x2e9d4f, transparent: true, opacity: .28, depthWrite: false})); disc.rotation.x = -Math.PI / 2; disc.position.set(ASM.x, -.28, ASM.z); scene.add(disc);
-  const post = cyl(.06, 2.6, M.dgrey, 8); post.position.set(ASM.x, 1.0, ASM.z - 3.6); scene.add(post);
-  label('ASSEMBLY POINT', 1.1, scene, ASM.x, 2.9, ASM.z - 3.6);
-  EXITS.forEach(e => label('EXIT', .8, floors[0], e.x, 2.9, e.z < 0 ? e.z : e.z - .2));
+  // two assembly points: A in front of the building (main exits), B behind it next to the staircase emergency door
+  ['A', 'B'].forEach(k => {
+    const a = ASM[k], disc = new Mesh(new CircleGeometry(4.2, 40), new MeshBasicMaterial({color: 0x2e9d4f, transparent: true, opacity: .28, depthWrite: false})); disc.rotation.x = -Math.PI / 2; disc.position.set(a.x, -.28, a.z); scene.add(disc);
+    const post = cyl(.06, 2.6, M.dgrey, 8); post.position.set(a.x, 1.0, a.z - a.dz * 3.6); scene.add(post);
+    label('ASSEMBLY POINT ' + k, 1.1, scene, a.x, 2.9, a.z - a.dz * 3.6);
+  });
+  EXITS.forEach(e => { if (!e.stair) label('EXIT', .8, floors[0], e.x, 2.9, e.z - .2); });
 }
 function pplEvent(type, text) { if (pplEv) try { pplEv(type, text); } catch (e) {} }
 function mkPerson(role, spk, home) {
@@ -837,32 +845,31 @@ export function peopleSpots() { return Object.keys(PSPOT).map(k => ({key: k, nam
 export function drillEvac() { if (PPL.length) { pplManual = true; } return PPL.length; }
 export function returnPeople() {
   PPL.forEach(p => { p.x = p.home.x; p.z = p.home.z; p.y = p.fi * FH; p.state = 'wait'; p.path = []; p.slot = null; p.g.position.set(p.x, p.y, p.z); p.g.rotation.y = 0; });
-  pplMode = 'idle'; pplClock = 0; pplManual = false; pplArmed = L.rank < 3; fmWarned = false; pplSafeN = 0;
+  pplMode = 'idle'; pplClock = 0; pplManual = false; pplArmed = L.rank < 3; fmWarned = false; pplAsm = {A: 0, B: 0};
 }
-export function clearPeople() { PPL.forEach(p => { pplG.remove(p.g); const k = pickables.indexOf(p.pk); if (k >= 0) pickables.splice(k, 1); }); PPL.length = 0; pplMode = 'idle'; pplClock = 0; pplManual = false; fmWarned = false; pplSafeN = 0; }
+export function clearPeople() { PPL.forEach(p => { pplG.remove(p.g); const k = pickables.indexOf(p.pk); if (k >= 0) pickables.splice(k, 1); }); PPL.length = 0; pplMode = 'idle'; pplClock = 0; pplManual = false; fmWarned = false; pplAsm = {A: 0, B: 0}; }
 export function onPeople(cb) { pplEv = cb; }
 export function peopleStatus() {
   const inside = {}; let safe = 0; PPL.forEach(p => { if (p.state === 'safe') safe++; else { const k = (p.spot === 'fm' && p.state !== 'move' ? 'FM200 room' : ['G', 'L1', 'L2'][floorOf(p.y)] || 'G'); inside[k] = (inside[k] || 0) + 1; } });
   return {total: PPL.length, safe, inside, clock: pplClock, mode: pplMode};
 }
 function routeFor(p) {
-  const pts = [], Y = k => k * FH, add = (x, y, z, s) => pts.push({x, y, z, s: !!s}); let from = {x: p.x, z: p.z};
+  const pts = [], Y = k => k * FH, add = (x, y, z, s) => pts.push({x, y, z, s: !!s}); let ex;
   if (p.role === 'warden') add(6, Y(p.fi), 3);                         // warden sweeps the floor first
   if (p.fi > 0) {
     add(STX, Y(p.fi), -4.3); add(STX, Y(p.fi), -5.7);
     for (let k = p.fi - 1; k >= 0; k--) { add(STX, Y(k), -10.4, 1); if (k > 0) add(STX, Y(k), -5.7); }
-    add(STX, 0, -4.3); from = {x: STX, z: -4.3};
-  }
-  const ex = EXITS.slice().sort((a, b) => Math.hypot(a.x - from.x, a.z - from.z) - Math.hypot(b.x - from.x, b.z - from.z))[0];
+    ex = EXITS.find(e => e.stair);                                      // people from upstairs leave by the emergency door at the foot of the stairs
+  } else ex = EXITS.slice().sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
   add(ex.x, 0, ex.z); ex.via.forEach(v => add(v[0], 0, v[1]));
-  const n = pplSafeN++; add(ASM.x - 3 + (n % 7) * .95, 0, ASM.z + Math.floor(n / 7) * .95);
+  const a = ASM[ex.a], n = pplAsm[ex.a]++; add(a.x - 3 + (n % 7) * .95, 0, a.z + a.dz * Math.floor(n / 7) * .95);
   return pts;
 }
 function pplTick(dt) {
   if (!PPL.length) return;
   if (L.rank < 3) pplArmed = true;
   if (pplMode === 'idle' && (pplManual || (pplArmed && L.rank >= 3))) {
-    pplMode = 'evac'; pplClock = 0; pplSafeN = 0; fmWarned = false;
+    pplMode = 'evac'; pplClock = 0; pplAsm = {A: 0, B: 0}; fmWarned = false;
     PPL.forEach(p => { const R = ROLE[p.role]; p.delay = rnd(R.d[0], R.d[1]); p.state = 'react'; });
     pplEvent('start', pplManual ? 'Evacuation drill started: everyone leaves now' : 'The 2nd alarm sounds: everyone starts to leave');
   }
