@@ -528,6 +528,7 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
           <button type="button" id="v3-valve" role="menuitem">Valve station</button>
           <button type="button" id="v3-pump" role="menuitem">Pump room &amp; tank</button>
           <button type="button" id="v3-ctrl" role="menuitem">Control room</button>
+          <button type="button" id="v3-stairx" role="menuitem">Stair emergency exit<small>Door and assembly point B</small></button>
         </div></span>
       <span class="v3-menuwrap"><button class="btn" id="v3-scn" type="button" aria-haspopup="true" aria-expanded="false">Scenarios ▾</button>
         <div class="v3-menu" id="m-scn" role="menu" hidden></div></span>
@@ -1257,7 +1258,7 @@ function f3Sync(c){
 }
 function f3Init(){
   if(F3)return Promise.resolve(F3);
-  if(!f3Pending)f3Pending=Promise.all([document.fonts.load('700 38px "Atkinson Hyperlegible"'),import('./fire3d.js?v=12')]).then(([,m])=>{
+  if(!f3Pending)f3Pending=Promise.all([document.fonts.load('700 38px "Atkinson Hyperlegible"'),import('./fire3d.js?v=13')]).then(([,m])=>{
     m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;m.onPeople((ty,t)=>{pplLast=t;log(ty==='danger'?'fire':ty==='start'?'pre':'ok','PEOPLE · '+t)});m.onFire((k,t)=>{fireLast=t;log(/out|Too big/.test(t)&&!/Too big/.test(t)?'ok':'fire','FIRE · '+t)});const l=$('#v3-load');if(l)l.remove();return m;
   }).catch(e=>{f3Pending=null;const l=$('#v3-load');if(l)l.textContent='3D view could not load ('+((e&&e.message)||e)+'). Check that fire3d.js is uploaded next to index.html and that this browser supports WebGL.';return null});
   return f3Pending;
@@ -1467,6 +1468,7 @@ $('#v3-act').addEventListener('click',e=>{const b=e.target.closest('button[data-
 $('#v3-pumphud').addEventListener('click',()=>setMode('pump'));
 $('#v3-pump').addEventListener('click',()=>F3&&F3.focusPump());
 $('#v3-ctrl').addEventListener('click',()=>F3&&F3.focusControl());
+$('#v3-stairx').addEventListener('click',()=>F3&&F3.focusStairExit());
 $('#k-v2d').addEventListener('click',()=>setMode('2d'));
 $('#k-v3d').addEventListener('click',()=>setMode('3d'));
 $('#k3-ack').addEventListener('click',doAck);$('#k3-sil').addEventListener('click',doSil);$('#k3-reset').addEventListener('click',doReset);
