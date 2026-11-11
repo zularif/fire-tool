@@ -2,7 +2,7 @@
    Reads the same state as the 2D diagram (inputs, outputs, rule results) and draws it in a generic 4-level building.
    Built with three.js (bundled into fire3d.js). Educational model only. */
 import {
-  BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, CylinderGeometry, DoubleSide,
+  AdditiveBlending, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, CylinderGeometry, DoubleSide,
   EdgesGeometry, GridHelper, Group, HemisphereLight, DirectionalLight, LineBasicMaterial, LineSegments, MathUtils, Mesh,
   MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera, Points, PointsMaterial, Raycaster, RepeatWrapping, Scene, ShaderMaterial,
   CircleGeometry, SphereGeometry, Sprite, SpriteMaterial, TorusGeometry, Vector2, Vector3, WebGLRenderer
@@ -675,11 +675,119 @@ function stationFrame(dt) {
     if (!c.length) for (const h of HEADS) if (h.sys === sys) c.push([Math.hypot(h.p.x, h.p.z), h]);
     c.sort((a, b) => a[0] - b[0]); return c.slice(0, cap).map(x => x[1]);
   };
-  const open = new Set([...near('pre', rel, 8), ...near('wet', flow, 4)]);
+  const open = new Set([...near('pre', rel, 8), ...near('wet', flow, 4), ...fireOpen]);
   for (const h of HEADS) {
     const o = open.has(h); h.bulb.visible = !o;
     if (o && (h.sys === 'wet' || wet > .6)) { h.acc += dt * 30 * pf; while (h.acc >= 1) { h.acc--; emit('spray', h.p.x, h.p.y, h.p.z); } }
   }
+}
+
+/* ---------------------------------------------------------------- fire (training visual, not a fire model)
+   A fire grows from small to large. It sets off the detectors near it by itself (smoke first, heat later), opens the
+   sprinkler heads above it, and can be put out by sprinklers, a portable extinguisher (while small) or the FM200 gas. */
+const FIRE_SPOTS = {
+  lobby: {name: 'Ground lobby', fi: 0, x: -6, z: 5},
+  l1: {name: 'L1 office', fi: 1, x: -6, z: 0},
+  l2: {name: 'L2 office', fi: 2, x: -3, z: 2},
+  fm: {name: 'FM200 room', fi: 0, x: 12, z: -7, fm: true}
+};
+const fires = [], fireOpen = new Set(); let fireG = null, fireSeq = 0, fireEv = null;
+const fireGeo = new ConeGeometry(.5, 1.6, 8, 1, true);
+function mkFire(key) {
+  const sp = FIRE_SPOTS[key]; if (!sp) return null;
+  if (!fireG) { fireG = new Group(); scene.add(fireG); }
+  killFire(key, true);
+  const g = new Group(); g.position.set(sp.x, sp.fi * FH + .05, sp.z);
+  const cones = [0xff4d00, 0xff7a00, 0xffb300, 0xffe066].map((c, i) => {
+    const m = new Mesh(fireGeo, new MeshBasicMaterial({color: c, transparent: true, opacity: .78, depthWrite: false, blending: AdditiveBlending, side: DoubleSide}));
+    m.userData.ph = i * 1.7; g.add(m); return m;
+  });
+  const gl = new Sprite(new SpriteMaterial({map: HALO, color: 0xff8a2a, transparent: true, opacity: .6, depthTest: false, depthWrite: false, blending: AdditiveBlending}));
+  gl.renderOrder = 19; gl.position.y = .9; g.add(gl);
+  const pk = new Mesh(new SphereGeometry(1.4, 8, 6), new MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false})); pk.position.y = .9; g.add(pk);
+  fireG.add(g);
+  const f = {key, sp, id: ++fireSeq, g, cones, gl, pk, size: .12, age: 0, det: 0, sprayed: 0, note: '', state: 'growing'};
+  pk.userData.dev = {kind: 'fire', f, html: () => fireHtml(f), use: () => useExtinguisher(f)};
+  pickables.push(pk); fires.push(f); fireNote(f, 'Fire started in ' + sp.name); return f;
+}
+function fireNote(f, t) { f.note = t; if (fireEv) try { fireEv(f.key, t); } catch (e) {} }
+function fireHtml(f) {
+  const pct = Math.round(f.size * 100), st = f.state === 'out' ? 'Out' : f.size < .4 ? 'Small: an extinguisher can still put it out' : f.size < .75 ? 'Growing: too big for an extinguisher. Evacuate.' : 'Large: let the sprinklers and fire service handle it';
+  return '<b>Fire · ' + f.sp.name + '</b><br>Size ' + pct + '%<br>' + st + '<br><small>Tap the fire to use a portable extinguisher</small>';
+}
+function useExtinguisher(f) {
+  if (f.state === 'out') return;
+  if (f.size < .4) { f.size = 0; f.state = 'out'; fireNote(f, 'Fire put out with a portable extinguisher'); }
+  else fireNote(f, 'Too big for a portable extinguisher. Evacuate and leave it to the sprinklers.');
+}
+function killFire(key, silent) {
+  for (let i = fires.length - 1; i >= 0; i--) if (!key || fires[i].key === key) {
+    const f = fires[i]; fireG.remove(f.g); const k = pickables.indexOf(f.pk); if (k >= 0) pickables.splice(k, 1); fires.splice(i, 1);
+  }
+}
+function fireTick(dt) {
+  fireOpen.clear(); if (!fires.length) return;
+  for (let i = fires.length - 1; i >= 0; i--) {
+    const f = fires[i], sp = f.sp, wx = sp.x, wz = sp.z; f.age += dt;
+    const grow = f.state !== 'out' && !f.wetting;
+    if (grow) f.size = Math.min(1, f.size + dt / 50);
+    // sprinklers: heads above the fire open once it is hot; only heads with water (wet system, or pre-action after release) put it out
+    let wetN = 0;
+    if (!sp.fm && (f.size > .5 || f.opened) && f.state !== 'out') {
+      f.opened = true;
+      const near = HEADS.filter(h => h.fi === sp.fi && Math.hypot(h.p.x - wx, h.p.z - wz) < 5.5).sort((a, b) => Math.hypot(a.p.x - wx, a.p.z - wz) - Math.hypot(b.p.x - wx, b.p.z - wz)).slice(0, 4);
+      near.forEach(h => { fireOpen.add(h); if (h.sys === 'wet' || wet > .6) wetN++; });
+    }
+    f.wetting = wetN > 0;
+    if (wetN) { const pf = L.pump ? clamp(Math.sqrt(Math.max(0, L.pump.P) / 8.6), 0, 1.15) : 1; f.size -= dt * .025 * Math.min(3, wetN) * pf; f.sprayed += dt; if (f.state !== 'out' && !f.flagS) { f.flagS = 1; fireNote(f, 'Sprinklers are spraying water on the fire'); } }
+    if (sp.fm && gasBox && gasBox.material.opacity > .07 && f.state !== 'out') { f.size -= dt * .3; if (f.size <= .03) fireNote(f, 'FM200 gas put out the fire'); }
+    if (f.state !== 'out' && f.size <= .03) { f.size = 0; f.state = 'out'; if (!f.note.includes('put out')) fireNote(f, 'Fire is out'); }
+    // detectors and sprinkler alarms are driven from the fire, using the normal panel inputs
+    f.det -= dt;
+    if (f.det <= 0 && f.state !== 'out') {
+      f.det = .5;
+      for (const d of IN) {
+        if (L.on.has(d.id) || (d.style !== 'smoke' && d.style !== 'heat') || floorOf(d.wpos.y) !== sp.fi) continue;
+        if (/fm ?200/i.test(d.key) !== !!sp.fm) continue;
+        const dist = Math.hypot(d.wpos.x - wx, d.wpos.z - wz);
+        const hit = d.style === 'smoke' ? f.size > .2 && dist < 3 + 12 * f.size : f.size > .45 && dist < 2 + 7 * f.size;
+        if (hit && api.toggle) { api.toggle(d.id); fireNote(f, d.id + ' detects the fire'); }
+      }
+      let pre = false, wetO = false; fireOpen.forEach(h => { if (h.sys === 'pre') pre = true; else wetO = true; });
+      for (const d of IN) {
+        if (L.on.has(d.id)) continue;
+        if (d.style === 'flow' && wetO && f.sprayed > 1.5 && api.toggle) { api.toggle(d.id); fireNote(f, 'Water flow switch ' + d.id + ' trips'); }
+        if (d.style === 'valve' && pre && api.toggle) { api.toggle(d.id); fireNote(f, 'Sprinkler head burst: ' + d.id + ' air pressure drop'); }
+      }
+    }
+    // visuals
+    const vis = sp.fi <= floorCap; f.g.visible = vis;
+    const s = f.size, k = Math.max(.001, s);
+    f.cones.forEach((c, j) => {
+      const fl = 1 + .18 * Math.sin(T * (9 + j * 3) + c.userData.ph), w = (.45 + k * 1.1) * (1 - j * .16), h = (.5 + k * 2.4) * (1 - j * .17) * fl;
+      c.scale.set(w, h / 1.6, w); c.position.y = h / 2; c.rotation.y = T * (1 + j * .4); c.visible = s > .02;
+    });
+    f.gl.scale.setScalar(1.5 + k * 5.5); f.gl.material.opacity = Math.min(.7, .15 + k * .7) * (s > .02 ? 1 : 0);
+    f.pk.scale.setScalar(.5 + k);
+    if (vis && s > .03) {
+      f.ea = (f.ea || 0) + dt; const sr = 24 * k, hr = 30 * k;
+      f.sa = (f.sa || 0) + dt * sr; while (f.sa >= 1) { f.sa--; emit('smoke', wx + (Math.random() - .5) * .8, sp.fi * FH + 1 + k * 1.6, wz + (Math.random() - .5) * .8); }
+      f.ha = (f.ha || 0) + dt * hr; while (f.ha >= 1) { f.ha--; emit('heat', wx + (Math.random() - .5) * .7 * (.5 + k), sp.fi * FH + .3 + Math.random() * k, wz + (Math.random() - .5) * .7 * (.5 + k)); }
+    }
+    if (f.state === 'out' && s <= 0) { f.out = (f.out || 0) + dt; if (f.out > 4) { fireG.remove(f.g); const q = pickables.indexOf(f.pk); if (q >= 0) pickables.splice(q, 1); fires.splice(i, 1); } }
+  }
+}
+export function fireSpots() { return Object.keys(FIRE_SPOTS).map(k => ({key: k, name: FIRE_SPOTS[k].name, fi: FIRE_SPOTS[k].fi})); }
+export function igniteFire(key) { const f = mkFire(key); return !!f; }
+export function extinguish(key) { const f = fires.find(x => !key || x.key === key); if (f) useExtinguisher(f); return !!f; }
+export function putOutFires(key) { if (fireG) killFire(key); }
+export function onFire(cb) { fireEv = cb; }
+export function fireList() { return fires.map(f => ({key: f.key, name: f.sp.name, floor: ['G', 'L1', 'L2'][f.sp.fi], size: f.size, state: f.state, note: f.note, hot: f.size > .5, sprayed: f.sprayed, fm: !!f.sp.fm})); }
+export function focusFire(key) {
+  const f = fires.find(x => !key || x.key === key); if (!f) return false;
+  if (f.sp.fi > floorCap) { floorCap = f.sp.fi; applyFloors(); }
+  const t1 = new Vector3(f.sp.x, f.sp.fi * FH + 1.2, f.sp.z), off = camera.position.clone().sub(controls.target).normalize().multiplyScalar(camera.aspect < .9 ? 28 : 14);
+  tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)}; return true;
 }
 
 function rebuild(C) {
@@ -759,6 +867,7 @@ function frame(dt) {
   }
   for (const d of OUT) d.upd(dt, T);
   const ll = s.leds || {}; if (facp) { setLed(facp.leds.pwr, true, 1.4); setLed(facp.leds.pre, ll.pre); setLed(facp.leds.fire, ll.fire); setLed(facp.leds.sup, ll.sup); setLed(facp.leds.sil, ll.sil); drawPanel(); }
+  fireTick(dt);
   stationFrame(dt);
   fxFrame(dt); ctrlFrame();
   tickParticles(dt);
@@ -799,6 +908,7 @@ function bindEvents() {
     if (!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y), dur = performance.now() - down.t; down = null;
     if (moved > 6 || dur > 600) return;
     const d = pickAt(e); if (!d) { tipEl.style.opacity = 0; return; }
+    if (d.kind === 'fire') { d.use(); showTip(e, d, true); return; }
     if (d.kind === 'in') { api.toggle(d.id); showTip(e, d, true); setTimeout(() => { if (tipEl.style.opacity === '1') tipEl.innerHTML = d.html ? d.html() : api.describe(d); }, 60); } else showTip(e, d, true);
   });
   canvas.addEventListener('pointermove', e => {

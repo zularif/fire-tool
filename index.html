@@ -412,6 +412,9 @@ label.f{font-size:12px;}
 .v3-side>*{pointer-events:auto}
 .v3-leg{position:static;display:flex;flex-direction:column;gap:3px;padding:6px 9px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);pointer-events:none;opacity:.95}
 .v3-pump{position:absolute;left:10px;top:8px;z-index:2;display:flex;flex-direction:column;gap:5px;padding:7px 10px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);cursor:pointer;min-width:134px;text-align:left;font-family:inherit}
+.v3-fire{position:absolute;left:10px;top:104px;z-index:2;display:flex;flex-direction:column;gap:4px;padding:7px 10px;border-radius:6px;background:var(--surface);border:1px solid #d9822b;border-left:5px solid #e8590c;font-size:11px;color:var(--muted);cursor:pointer;min-width:134px;max-width:230px;text-align:left;font-family:inherit}
+.v3-fire[hidden]{display:none}.v3-fire b{font-size:12px;color:var(--fg)}.v3-fire .bar2{height:4px;background:var(--line);border-radius:2px;overflow:hidden}.v3-fire .bar2 i{display:block;height:100%;background:#e8590c}
+.v3-fire .n2{line-height:1.3}
 .v3-pump:hover,.v3-pump:focus-visible{border-color:var(--muted)}
 .v3-pump .hd{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.v3-pump .hd b{font-size:11px;color:var(--fg)}
 .v3-pump .hd span{font:600 14px ui-monospace,Menlo,Consolas,monospace;color:var(--fg)}
@@ -434,7 +437,7 @@ label.f{font-size:12px;}
 .v3-cap .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.v3-cap .btn{padding:3px 10px;font-size:12px}
 .v3-cap .prog{height:3px;background:var(--line);border-radius:2px;overflow:hidden}.v3-cap .prog i{display:block;height:100%;background:var(--accent);width:0}
 .v3-infobtn{display:none;position:absolute;left:8px;top:8px;z-index:3}
-@media(max-width:560px){.v3-infobtn{display:inline-flex}.v3-stage .v3-pump,.v3-stage .v3-side{display:none}.v3-stage.info-open .v3-pump{display:flex;top:46px}.v3-stage.info-open .v3-side{display:flex}.v3-cap{bottom:6px}.v3-menu{right:auto;left:0}}
+@media(max-width:560px){.v3-infobtn{display:inline-flex}.v3-stage .v3-pump,.v3-stage .v3-side{display:none}.v3-stage.info-open .v3-pump{display:flex;top:46px}.v3-fire{top:46px}.v3-stage.info-open .v3-fire{top:140px}.v3-stage.info-open .v3-side{display:flex}.v3-cap{bottom:6px}.v3-menu{right:auto;left:0}}
 .v3-act{background:var(--surface);border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--muted)}
 .v3-act .hd{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer}
 .v3-act .hd:focus-visible{outline:2px solid var(--accent)}
@@ -498,6 +501,7 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
         </div></div>
     </div>
       <button class="v3-pump" id="v3-pumphud" type="button" aria-label="Fire pump status. Open the fire pump page"><span class="hd"><b>Fire pump</b><span id="vp-p">–</span></span><span class="ch"><span class="vp-c" data-k="0" title="Jockey pump"><i></i>J</span><span class="vp-c" data-k="1" title="Electric pump (duty)"><i></i>E</span><span class="vp-c" data-k="2" title="Diesel pump (standby)"><i></i>D</span></span><span id="vp-t">Tank –</span><span class="go">Open pump page</span></button>
+      <button class="v3-fire" id="v3-firehud" type="button" hidden aria-live="polite" title="Go to the fire"></button>
       <div class="v3-hint">Drag to orbit · scroll or pinch to zoom · tap a detector, call point or valve to trigger it</div>
     </div>
     <div class="v3-bot">
@@ -524,6 +528,8 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
         </div></span>
       <span class="v3-menuwrap"><button class="btn" id="v3-scn" type="button" aria-haspopup="true" aria-expanded="false">Scenarios ▾</button>
         <div class="v3-menu" id="m-scn" role="menu" hidden></div></span>
+      <span class="v3-menuwrap"><button class="btn" id="v3-fire" type="button" aria-haspopup="true" aria-expanded="false">Fire ▾</button>
+        <div class="v3-menu" id="m-fire" role="menu" hidden></div></span>
       <button class="btn" id="v3-snap" type="button" title="Save the current 3D view as an image with the alarm summary">Snapshot</button>
     </div>
   </section>
@@ -1209,7 +1215,7 @@ aboutDialog.addEventListener('click',e=>{if(e.target===aboutDialog)closeAbout()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!aboutDialog.hidden)closeAbout()});
 
 /* ---------- 3D building view (loads fire3d.js on first use) ---------- */
-let F3=null,f3Pending=null,view3=false,LASTC=null;
+let F3=null,f3Pending=null,view3=false,LASTC=null,fireLast='';
 function f3Describe(d){
   if(d.kind==='in'){const f=findPoint(d.id);if(!f)return '';const on=S.on.has(d.id);
     return `<b>${esc(d.id)}</b> · ${esc(f.g.name.replace(/ \(.*\)/,''))}${f.p.label?' · '+esc(f.p.label):''}<br>${esc(f.p.addr||'')} — ${on?'<b>IN ALARM</b> · tap to clear':'Normal · tap to trigger'}`}
@@ -1246,8 +1252,8 @@ function f3Sync(c){
 }
 function f3Init(){
   if(F3)return Promise.resolve(F3);
-  if(!f3Pending)f3Pending=Promise.all([document.fonts.load('700 38px "Atkinson Hyperlegible"'),import('./fire3d.js?v=10')]).then(([,m])=>{
-    m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;const l=$('#v3-load');if(l)l.remove();return m;
+  if(!f3Pending)f3Pending=Promise.all([document.fonts.load('700 38px "Atkinson Hyperlegible"'),import('./fire3d.js?v=11')]).then(([,m])=>{
+    m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;m.onFire((k,t)=>{fireLast=t;log(/out|Too big/.test(t)&&!/Too big/.test(t)?'ok':'fire','FIRE · '+t)});const l=$('#v3-load');if(l)l.remove();return m;
   }).catch(e=>{f3Pending=null;const l=$('#v3-load');if(l)l.textContent='3D view could not load ('+((e&&e.message)||e)+'). Check that fire3d.js is uploaded next to index.html and that this browser supports WebGL.';return null});
   return f3Pending;
 }
@@ -1279,6 +1285,7 @@ window.FACP={show3d(){setMode('3d').then(()=>{if(F3)F3.focusPump()})},showPump()
   state(){return {panel:panelState(),view:mode,pointsOn:[...S.on],rulesMatched:[...S.matched],scenario:sc?sc.id||true:null,pump:!!PA}},
   press(k){const f={ack:doAck,silence:doSil,reset:doReset}[k];if(!f)throw new Error('press: ack | silence | reset');f();return panelState()},
   toggle(id){if(!findPoint(id))throw new Error('unknown point '+id);toggle(id);return panelState()},
+  fire:{start:k=>fireStart(k),out:()=>F3&&F3.putOutFires(),list:()=>F3?F3.fireList():[],extinguish:k=>F3?F3.extinguish(k):false,places:()=>FIRE_MENU.map(x=>x[0])},
   view(m){if(!['2d','3d','pump'].includes(m))throw new Error('view: 2d | 3d | pump');return setMode(m)}};
 setTimeout(pumpLoad,700);
 setInterval(()=>{
@@ -1336,11 +1343,23 @@ function snap(){
   };im.src=url;
 }
 $('#v3-snap').addEventListener('click',snap);
+/* ---- fire: start a training fire, watch it grow, put it out ---- */
+const FIRE_MENU=[['lobby','Ground lobby','wet sprinklers'],['l1','L1 office','pre-action sprinklers'],['l2','L2 office','pre-action sprinklers'],['fm','FM200 room','gas release']];
+$('#m-fire').innerHTML=FIRE_MENU.map(([k,n,s2])=>`<button type="button" role="menuitem" data-fire="${k}">Start fire: ${esc(n)}<small>${esc(s2)}</small></button>`).join('')+'<button type="button" role="menuitem" data-fire="focus">Go to the fire</button><button type="button" role="menuitem" data-fire="out">Put out all fires</button>';
+menu($('#v3-fire'),$('#m-fire'));
+async function fireStart(k){if(!view3)await setMode('3d');if(!F3)await f3Init();if(!F3)return;F3.igniteFire(k);F3.focusFire(k)}
+$('#m-fire').addEventListener('click',async e=>{const b=e.target.closest('[data-fire]');if(!b)return;const k=b.dataset.fire;
+  if(k==='out'){if(F3)F3.putOutFires();log('ok','FIRE · all fires put out (training)')}else if(k==='focus'){if(F3&&!F3.focusFire())log('ok','3D VIEW · no fire to go to')}else fireStart(k)});
+$('#v3-firehud').addEventListener('click',()=>F3&&F3.focusFire());
+setInterval(()=>{const el=$('#v3-firehud');if(!F3||!view3){el.hidden=true;return}
+  const l=F3.fireList();el.hidden=!l.length;if(!l.length)return;
+  el.innerHTML=l.map(f=>{const pct=Math.round(f.size*100),msg=f.state==='out'?'Out':f.size<.4?'Small. An extinguisher can still work':f.hot?'Large. Evacuate':'Growing';
+    return `<b>Fire · ${esc(f.name)}</b><span class="bar2"><i style="width:${pct}%"></i></span><span class="n2">${esc(msg)}${f.sprayed>0&&f.state!=='out'?' · sprinklers on':''}</span>`}).join('')},300);
 /* ---- scenarios: step-by-step replay ---- */
 const onD=id=>{if(findPoint(id)&&!S.on.has(id))toggle(id)};
 const camD=(k,id)=>F3&&F3.focusDev(k,id);
 const camV=n=>{if(!F3)return;({overview:()=>F3.resetView(),valve:()=>F3.focusValve(),pump:()=>F3.focusPump(),ctrl:()=>F3.focusControl()})[n]()};
-const rstAll=()=>{S.on.clear();S.sil=false;S.ack=false;S.since={};S.hold={};pumpAuto={};if(PA)try{PA.reset()}catch(e){}evaluate();if(F3)F3.resetView()};
+const rstAll=()=>{if(F3)F3.putOutFires();S.on.clear();S.sil=false;S.ack=false;S.since={};S.hold={};pumpAuto={};if(PA)try{PA.reset()}catch(e){}evaluate();if(F3)F3.resetView()};
 const SCN=[
  {id:'l1',name:'Fire on L1: double knock',sub:'Detector → panel → alarm outputs',steps:[
   {t:0,say:'Everything is normal. Smoke is about to start on level 1.',do:rstAll},
@@ -1367,7 +1386,26 @@ const SCN=[
   {t:3,say:'FM200 smoke detector FSD-01 sees smoke: 1st alarm.',do:()=>{onD('FSD-01');camD('in','FSD-01')}},
   {t:9,say:'FM200 heat detector FHD-01 confirms: cross-zone fire. A 30 second pre-discharge delay starts.',do:()=>{onD('FHD-01');camD('in','FHD-01')}},
   {t:20,say:'Watch the gas release and the "Do not enter" lamp after the delay.',do:()=>{camD('out','release')}},
-  {t:45,say:'End of scenario.',do:()=>camV('overview')}]}
+  {t:45,say:'End of scenario.',do:()=>camV('overview')}]},
+ {id:'fo',name:'Real fire on L1',sub:'Fire grows → detectors → pre-action → water',steps:[
+  {t:0,say:'L1 is normal. A fire is about to start in the office.',do:rstAll},
+  {t:3,say:'A fire starts in the L1 office. Flames and smoke grow over about a minute. You do not tap detectors in this scenario: the fire does it.',do:()=>{F3.igniteFire('l1');F3.focusFire('l1')}},
+  {t:6,after:5,when:()=>S.on.size>0,max:60,say:'Smoke reaches a detector. The panel shows a 1st alarm.',do:()=>{const id=[...S.on][0];if(id)camD('in',id)}},
+  {t:6,after:5,when:()=>S.top>=3,max:90,say:'A second detector confirms the fire: 2nd alarm. The panel runs the outputs: bells, speakers, strobes, fans.',do:()=>camV('overview')},
+  {t:6,after:5,when:()=>F3.fireList().some(f=>f.hot),max:90,say:'The fire is hot enough to burst the sprinkler heads above it. Air pressure drops (PA-01). Detector plus burst head = pre-action valve release.',do:()=>{F3.focusFire();}},
+  {t:6,after:5,when:()=>F3.fireList().some(f=>f.sprayed>2),max:90,say:'Water is flowing onto the fire. The fire pumps start when pressure falls. Watch the fire shrink.',do:()=>camV('pump')},
+  {t:6,after:5,when:()=>!F3.fireList().length||F3.fireList().every(f=>f.state==='out'),max:120,say:'The fire is out, but the panel stays in alarm until someone presses Reset. End of scenario.',do:()=>camV('overview')}]},
+ {id:'fx',name:'Small fire: extinguisher',sub:'Put it out yourself while it is small',steps:[
+  {t:0,say:'The ground lobby is normal.',do:rstAll},
+  {t:3,say:'A fire starts in the ground lobby. It is small now. Tap the fire to use a portable extinguisher before it passes 40%.',do:()=>{F3.igniteFire('lobby');F3.focusFire('lobby')}},
+  {t:6,after:5,when:()=>!F3.fireList().length||F3.fireList().every(f=>f.state==='out')||F3.fireList().some(f=>f.size>=.4),max:70,say:()=>/extinguisher/.test(fireLast)?'You put it out in time. In real life: raise the alarm first, use an extinguisher only if it is safe and you have a clear exit.':'The fire is now too big for an extinguisher. Leave the area and let the wet sprinklers work.',do:()=>{}},
+  {t:6,after:6,when:()=>!F3.fireList().length||F3.fireList().every(f=>f.state==='out'),max:90,say:'The fire is out. The detectors stay in alarm until you press Reset on the panel. End of scenario.',do:()=>camV('overview')}]},
+ {id:'ffm',name:'Real fire in the FM200 room',sub:'Cross-zone → 30 s delay → gas puts it out',steps:[
+  {t:0,say:'The FM200 room is normal.',do:rstAll},
+  {t:3,say:'A fire starts in the FM200 room.',do:()=>{F3.igniteFire('fm');F3.focusFire('fm')}},
+  {t:6,after:5,when:()=>S.on.size>0,max:60,say:'The smoke detector sees smoke: 1st alarm.',do:()=>{const id=[...S.on][0];if(id)camD('in',id)}},
+  {t:6,after:5,when:()=>S.on.size>1,max:90,say:'The heat detector confirms: cross-zone fire. The 30 second pre-discharge delay starts. Everyone must leave the room now.',do:()=>camD('out','release')},
+  {t:6,after:5,when:()=>!F3.fireList().length||F3.fireList().every(f=>f.state==='out'),max:120,say:'The gas has been released and the fire is out. Nobody may enter until the room is ventilated.',do:()=>camV('overview')}]}
 ];
 $('#m-scn').innerHTML=SCN.map(s=>`<button type="button" role="menuitem" data-sc="${s.id}">${esc(s.name)}<small>${esc(s.sub)}</small></button>`).join('');
 let sc=null;
@@ -1375,13 +1413,13 @@ function scStop(){if(sc){clearInterval(sc.tm);sc=null}$('#v3-cap').hidden=true}
 async function scStart(id){
   const def=SCN.find(x=>x.id===id);if(!def)return;scStop();
   if(!view3)await setMode('3d');if(!F3)await f3Init();
-  sc={def,t:0,i:0,speed:+($('#cap-sp .btn[aria-pressed="true"]')||{dataset:{s:1}}).dataset.s||1,paused:false,last:performance.now()};
+  def.steps.forEach(x=>{delete x.wt});sc={def,t:0,i:0,lt:0,speed:+($('#cap-sp .btn[aria-pressed="true"]')||{dataset:{s:1}}).dataset.s||1,paused:false,last:performance.now()};
   $('#v3-cap').hidden=false;const total=def.steps[def.steps.length-1].t+6;
   sc.tm=setInterval(()=>{
     const now=performance.now(),dt=(now-sc.last)/1000;sc.last=now;if(sc.paused)return;sc.t+=dt*sc.speed;
-    while(sc.i<def.steps.length&&sc.t>=def.steps[sc.i].t){const st=def.steps[sc.i];sc.i++;try{st.do()}catch(e){}$('#cap-n').textContent=def.name+' · step '+Math.min(sc.i,def.steps.length)+' of '+def.steps.length;$('#cap-t').textContent=st.say}
+    while(sc.i<def.steps.length){const st=def.steps[sc.i];let ok=sc.t>=st.t&&sc.t>=sc.lt+(st.after||0);if(ok&&st.when){let w=false;try{w=st.when()}catch(e){}if(!w){if(st.wt==null)st.wt=sc.t;ok=sc.t>=st.wt+(st.max||70)}}if(!ok)break;sc.i++;sc.lt=sc.t;try{st.do()}catch(e){}$('#cap-n').textContent=def.name+' · step '+Math.min(sc.i,def.steps.length)+' of '+def.steps.length;$('#cap-t').textContent=typeof st.say==='function'?st.say():st.say}
     $('#cap-p').style.width=Math.min(100,sc.t/total*100)+'%';
-    if(sc.t>=total)scStop();
+    if(sc.t>=total&&sc.i>=def.steps.length)scStop();
   },100);
 }
 $('#m-scn').addEventListener('click',e=>{const b=e.target.closest('[data-sc]');if(b)scStart(b.dataset.sc)});
