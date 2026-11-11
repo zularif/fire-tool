@@ -2,7 +2,7 @@
    Reads the same state as the 2D diagram (inputs, outputs, rule results) and draws it in a generic 4-level building.
    Built with three.js (bundled into fire3d.js). Educational model only. */
 import {
-  AdditiveBlending, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, CylinderGeometry, DoubleSide,
+  AdditiveBlending, BoxGeometry, CapsuleGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, CylinderGeometry, DoubleSide,
   EdgesGeometry, GridHelper, Group, HemisphereLight, DirectionalLight, LineBasicMaterial, LineSegments, MathUtils, Mesh,
   MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera, Points, PointsMaterial, Raycaster, RepeatWrapping, Scene, ShaderMaterial,
   CircleGeometry, SphereGeometry, Sprite, SpriteMaterial, TorusGeometry, Vector2, Vector3, WebGLRenderer
@@ -790,6 +790,103 @@ export function focusFire(key) {
   tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)}; return true;
 }
 
+/* ---------------------------------------------------------------- people (training visual, not a crowd model)
+   Each person is a small state machine:   wait --(alarm or drill)--> react --(reaction time over)--> move --(reached assembly point)--> safe
+   Occupants react in 3-9 s, wardens sweep their floor first and react at once, visitors react slowly (12-22 s) and walk slower.
+   Everyone uses the stairs (never the lift), then the nearest exit, then walks to the assembly point for the roll call. */
+const PSPOT = {
+  lobby: {fi: 0, x: -12, z: 6, r: 3, name: 'Ground lobby'}, l1: {fi: 1, x: -9, z: 3, r: 3, name: 'L1 office'},
+  l2: {fi: 2, x: -7, z: 0, r: 3, name: 'L2 office'}, fm: {fi: 0, x: 13, z: -6, r: 1.6, name: 'FM200 room'}
+};
+const ROLE = {
+  occupant: {name: 'Occupant', col: 0x2b6cc4, sp: 1.4, d: [3, 9]}, visitor: {name: 'Visitor', col: 0xf08a24, sp: 1.0, d: [12, 22]},
+  warden: {name: 'Fire warden', col: 0x2e9d4f, sp: 1.6, d: [0, 2]}
+};
+const STX = -2, ASM = {x: 0, z: 17};
+const EXITS = [{x: -6, z: 11.6, via: []}, {x: -18.6, z: 6, via: [[-18.6, 14.5]]}, {x: 18.6, z: 6, via: [[18.6, 14.5]]}];
+const PPL = []; let pplG = null, pplMode = 'idle', pplClock = 0, pplEv = null, pplManual = false, pplArmed = true, fmWarned = false, pplSafeN = 0, pplMat = null;
+function pplInit() {
+  if (pplG) return; pplG = new Group(); scene.add(pplG);
+  pplMat = {skin: std(0xf0c8a0), cap: std(0xf6c026)}; Object.keys(ROLE).forEach(k => pplMat[k] = std(ROLE[k].col));
+  // assembly point: green disc, post and sign, and a green EXIT sign over each ground-floor door
+  const disc = new Mesh(new CircleGeometry(4.2, 40), new MeshBasicMaterial({color: 0x2e9d4f, transparent: true, opacity: .28, depthWrite: false})); disc.rotation.x = -Math.PI / 2; disc.position.set(ASM.x, -.28, ASM.z); scene.add(disc);
+  const post = cyl(.06, 2.6, M.dgrey, 8); post.position.set(ASM.x, 1.0, ASM.z - 3.6); scene.add(post);
+  label('ASSEMBLY POINT', 1.1, scene, ASM.x, 2.9, ASM.z - 3.6);
+  EXITS.forEach(e => label('EXIT', .8, floors[0], e.x, 2.9, e.z < 0 ? e.z : e.z - .2));
+}
+function pplEvent(type, text) { if (pplEv) try { pplEv(type, text); } catch (e) {} }
+function mkPerson(role, spk, home) {
+  pplInit(); const R = ROLE[role], g = new Group();
+  const body = new Mesh(new CapsuleGeometry(.21, .72, 4, 8), pplMat[role]); body.position.y = .62; g.add(body);
+  const head = new Mesh(new SphereGeometry(.17, 10, 8), pplMat.skin); head.position.y = 1.4; g.add(head);
+  if (role === 'warden') { const h = new Mesh(new SphereGeometry(.19, 10, 6, 0, TAU, 0, Math.PI / 2), pplMat.cap); h.position.y = 1.44; g.add(h); }
+  const pk = new Mesh(new SphereGeometry(.8, 8, 6), new MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false})); pk.position.y = .9; g.add(pk);
+  const sp = PSPOT[spk], pr = {g, role, spot: spk, fi: sp.fi, home, x: home.x, y: sp.fi * FH, z: home.z, state: 'wait', path: [], i: 0, delay: 0, ph: Math.random() * 6, slot: null};
+  g.scale.setScalar(1.3); g.position.set(pr.x, pr.y, pr.z); pplG.add(g);
+  pk.userData.dev = {kind: 'person', html: () => '<b>' + R.name + '</b> · ' + sp.name + '<br>' + ({wait: 'Waiting for an alarm', react: 'Heard the alarm, reacting', move: 'Walking to the assembly point', safe: 'At the assembly point'})[pr.state]};
+  pickables.push(pk); pr.pk = pk; PPL.push(pr); return pr;
+}
+function rnd(a, b) { return a + Math.random() * (b - a); }
+export function addPeople(spk, n = 5, role = 'occupant') {
+  const sp = PSPOT[spk]; if (!sp || !ROLE[role]) return 0; n = Math.min(n, Math.max(0, 40 - PPL.length));
+  for (let i = 0; i < n; i++) { const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * sp.r; mkPerson(role, spk, {x: sp.x + Math.cos(a) * r, z: sp.z + Math.sin(a) * r * .8}); }
+  if (pplMode === 'done') returnPeople(); return n;
+}
+export function addWardens() { ['lobby', 'l1', 'l2'].forEach(k => addPeople(k, 1, 'warden')); return 3; }
+export function peopleSpots() { return Object.keys(PSPOT).map(k => ({key: k, name: PSPOT[k].name})); }
+export function drillEvac() { if (PPL.length) { pplManual = true; } return PPL.length; }
+export function returnPeople() {
+  PPL.forEach(p => { p.x = p.home.x; p.z = p.home.z; p.y = p.fi * FH; p.state = 'wait'; p.path = []; p.slot = null; p.g.position.set(p.x, p.y, p.z); p.g.rotation.y = 0; });
+  pplMode = 'idle'; pplClock = 0; pplManual = false; pplArmed = L.rank < 3; fmWarned = false; pplSafeN = 0;
+}
+export function clearPeople() { PPL.forEach(p => { pplG.remove(p.g); const k = pickables.indexOf(p.pk); if (k >= 0) pickables.splice(k, 1); }); PPL.length = 0; pplMode = 'idle'; pplClock = 0; pplManual = false; fmWarned = false; pplSafeN = 0; }
+export function onPeople(cb) { pplEv = cb; }
+export function peopleStatus() {
+  const inside = {}; let safe = 0; PPL.forEach(p => { if (p.state === 'safe') safe++; else { const k = (p.spot === 'fm' && p.state !== 'move' ? 'FM200 room' : ['G', 'L1', 'L2'][floorOf(p.y)] || 'G'); inside[k] = (inside[k] || 0) + 1; } });
+  return {total: PPL.length, safe, inside, clock: pplClock, mode: pplMode};
+}
+function routeFor(p) {
+  const pts = [], Y = k => k * FH, add = (x, y, z, s) => pts.push({x, y, z, s: !!s}); let from = {x: p.x, z: p.z};
+  if (p.role === 'warden') add(6, Y(p.fi), 3);                         // warden sweeps the floor first
+  if (p.fi > 0) {
+    add(STX, Y(p.fi), -4.3); add(STX, Y(p.fi), -5.7);
+    for (let k = p.fi - 1; k >= 0; k--) { add(STX, Y(k), -10.4, 1); if (k > 0) add(STX, Y(k), -5.7); }
+    add(STX, 0, -4.3); from = {x: STX, z: -4.3};
+  }
+  const ex = EXITS.slice().sort((a, b) => Math.hypot(a.x - from.x, a.z - from.z) - Math.hypot(b.x - from.x, b.z - from.z))[0];
+  add(ex.x, 0, ex.z); ex.via.forEach(v => add(v[0], 0, v[1]));
+  const n = pplSafeN++; add(ASM.x - 3 + (n % 7) * .95, 0, ASM.z + Math.floor(n / 7) * .95);
+  return pts;
+}
+function pplTick(dt) {
+  if (!PPL.length) return;
+  if (L.rank < 3) pplArmed = true;
+  if (pplMode === 'idle' && (pplManual || (pplArmed && L.rank >= 3))) {
+    pplMode = 'evac'; pplClock = 0; pplSafeN = 0; fmWarned = false;
+    PPL.forEach(p => { const R = ROLE[p.role]; p.delay = rnd(R.d[0], R.d[1]); p.state = 'react'; });
+    pplEvent('start', pplManual ? 'Evacuation drill started: everyone leaves now' : 'The 2nd alarm sounds: everyone starts to leave');
+  }
+  if (pplMode === 'evac') pplClock += dt;
+  let moving = 0;
+  for (const p of PPL) {
+    if (p.state === 'react') { p.delay -= dt; if (p.delay <= 0) { p.path = routeFor(p); p.i = 0; p.state = 'move'; } }
+    if (p.state === 'move') {
+      moving++; const t = p.path[p.i], R = ROLE[p.role], dx = t.x - p.x, dz = t.z - p.z, dy = t.y - p.y, d = Math.hypot(dx, dy, dz), v = R.sp * (t.s ? .7 : 1) * dt;
+      if (d <= v) { p.x = t.x; p.y = t.y; p.z = t.z; p.i++; if (p.i >= p.path.length) { p.state = 'safe'; p.g.rotation.y = 0; } }
+      else { p.x += dx / d * v; p.y += dy / d * v; p.z += dz / d * v; if (Math.hypot(dx, dz) > .05) p.g.rotation.y = Math.atan2(dx, dz); }
+    }
+    p.g.position.set(p.x, p.y + (p.state === 'move' ? Math.abs(Math.sin(T * 9 + p.ph)) * .07 : 0), p.z);
+    p.g.visible = floorOf(p.y + .05) <= floorCap;
+  }
+  if (pplMode === 'evac') {
+    if (PPL.every(p => p.state === 'safe')) { pplMode = 'done'; const m = Math.floor(pplClock / 60), sec = String(Math.floor(pplClock % 60)).padStart(2, '0'); pplEvent('done', 'All ' + PPL.length + ' people are at the assembly point after ' + m + ':' + sec); }
+    if (!fmWarned && gasBox && gasBox.material.opacity > .07) {
+      fmWarned = true; const n = PPL.filter(p => p.state !== 'safe' && p.y < .5 && p.x > 8 && p.x < 16 && p.z < -3.2).length;
+      if (n) pplEvent('danger', n + (n === 1 ? ' person is' : ' people are') + ' still inside the FM200 room as the gas is released');
+      else pplEvent('ok', 'The FM200 room was empty when the gas was released');
+    }
+  }
+}
 function rebuild(C) {
   dynG.forEach(g => { while (g.children.length) g.remove(g.children[0]); });
   IN.length = OUT.length = pickables.length = 0; lift = null; if (gasBox) { gasBox.parent && gasBox.parent.remove(gasBox); gasBox = null; }
@@ -868,6 +965,7 @@ function frame(dt) {
   for (const d of OUT) d.upd(dt, T);
   const ll = s.leds || {}; if (facp) { setLed(facp.leds.pwr, true, 1.4); setLed(facp.leds.pre, ll.pre); setLed(facp.leds.fire, ll.fire); setLed(facp.leds.sup, ll.sup); setLed(facp.leds.sil, ll.sil); drawPanel(); }
   fireTick(dt);
+  pplTick(dt);
   stationFrame(dt);
   fxFrame(dt); ctrlFrame();
   tickParticles(dt);
