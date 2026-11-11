@@ -465,6 +465,56 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
 .key{font-stretch:75%;letter-spacing:.04em}
 .keys-top .key{font-stretch:72%}
 .txt .t{font-weight:700}
+
+/* ---- Logic tab: wire builder (always dark) ---- */
+.wg{--bg:#0b1118;--card:#151d28;--line:#2c394b;--tx:#e8eef5;--mu:#93a2b5;background:var(--bg);color:var(--tx);border:1px solid #243041;border-radius:12px;overflow:hidden;margin:6px 0 16px;font-size:13px}
+.wg-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 12px;background:#101823;border-bottom:1px solid var(--line)}
+.wg-title{font-size:15px}.wg-title span{color:var(--mu);font-weight:400;font-size:12.5px}.wg-sp{flex:1}
+.wg-q{background:#0b1118;border:1px solid var(--line);color:var(--tx);border-radius:7px;padding:5px 9px;width:190px;font:inherit}
+.wg-seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}.wg-seg .wbtn{border:0;border-radius:0;border-right:1px solid var(--line)}.wg-seg .wbtn:last-child{border-right:0}
+.wbtn{background:#18222f;color:var(--tx);border:1px solid var(--line);border-radius:7px;padding:5px 10px;font:inherit;cursor:pointer}
+.wbtn:hover{background:#223044}.wbtn.on{background:#22456f;border-color:#3f78b8}.wbtn.pri{background:#1f6fe0;border-color:#4a8cf0}
+.wg-z{min-width:40px;text-align:center;color:var(--mu)}
+.wg-main{display:flex;height:660px}
+.wg-vp{position:relative;flex:1;overflow:hidden;cursor:grab;background-color:#0b1118;background-image:radial-gradient(#223044 1px,transparent 1px);background-size:22px 22px;touch-action:none;outline:0}
+.wg-world{position:absolute;left:0;top:0;transform-origin:0 0}
+.wg-svg{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.wg-svg .wr{pointer-events:auto}.wr .hit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer;pointer-events:stroke}
+.wr .vis{fill:none;stroke-width:2;opacity:.75;pointer-events:none}.wr.eff .vis{opacity:.32}.wr.eff:hover .vis,.wr.eff.sel .vis{opacity:1}.wr:hover .vis,.wr.sel .vis{stroke-width:3.5;opacity:1}
+.wr.sel .vis{filter:drop-shadow(0 0 4px #fff)}.wr.dim .vis{opacity:.08}.wr.eff.foc .vis{opacity:.95;stroke-width:2.5}.wr.dim .lab{opacity:.2}
+.wr .lab{pointer-events:all;cursor:pointer}.wr .lab rect{fill:#0f1620;stroke:#33445a}.wr .lab text{fill:#cfe3ff;font-size:11px}
+.tmp{fill:none;stroke:#fff;stroke-width:2;stroke-dasharray:6 5;pointer-events:none}
+.wn{position:absolute;box-sizing:border-box;background:var(--card);border:1.5px solid var(--line);border-radius:10px;color:var(--tx);user-select:none;cursor:pointer}
+.wn.dim{opacity:.2}.wn.hit{box-shadow:0 0 0 2px #ffd54a}.wn.tgt{border-color:#59d38c;box-shadow:0 0 0 3px #59d38c55}
+.pt{position:absolute;width:13px;height:13px;border-radius:50%;background:#0b1118;border:2px solid #6c7f96;transform:translateY(-50%);cursor:crosshair;z-index:2}
+.pt.r{right:-7px}.pt.l{left:-7px}.pt:hover{border-color:#fff;background:#4da3ff}.pt.and{border-style:dashed}
+.wh{display:flex;align-items:center;gap:8px;padding:8px 10px;min-height:52px;box-sizing:border-box}
+.wt{display:flex;flex-direction:column;min-width:0;flex:1}.wt b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wt small{color:var(--mu);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wth{flex:none;width:34px;height:34px;border-radius:8px;background:#0f1620;display:flex;align-items:center;justify-content:center;overflow:hidden}.wth img{max-width:30px;max-height:30px;object-fit:contain}.wth.ph{font-weight:700;font-size:15px}
+.wtog{background:#0f1620;border:1px solid var(--line);color:var(--tx);border-radius:6px;padding:2px 7px;cursor:pointer;font:inherit}
+.win{border-color:#5a3d40}.win.unused,.wout.unused{opacity:.55;border-style:dashed}
+.wp{position:absolute;left:0;right:0;height:22px;font-size:11.5px;padding:0 20px 0 14px;display:flex;align-items:center;color:#cbd6e3;border-top:1px solid #1d2937}.wp em{color:var(--mu);font-style:normal;margin-left:4px}
+.wgate{border-radius:16px;background:#101823;border-color:var(--c);display:flex;align-items:center;justify-content:center;font-size:11.5px;color:#dbe7f5;white-space:nowrap}
+.wgate.empty{border-style:dashed;color:var(--mu)}.wgate.sel{box-shadow:0 0 0 3px #ffffff33}
+.wrule{border-color:var(--c);background:linear-gradient(180deg,#18222f,#121a24);box-shadow:0 0 14px color-mix(in srgb,var(--c) 26%,transparent)}
+.wrule.sel{box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 55%,transparent),0 0 18px var(--c)}
+.wrule .wh{padding:8px 12px 0;min-height:0;flex-wrap:wrap;gap:6px}.wrule .wh b{font-size:14px}.tp{font-size:10.5px;font-weight:700;background:var(--c);color:#10151c;border-radius:5px;padding:1px 7px}
+.wsub{padding:2px 12px 0;color:var(--mu);font-size:11.5px}.wsub u{color:#ffb4ae;text-decoration:none}
+.wsub2{padding:3px 12px 0;color:#b8c6d6;font-size:11px;line-height:1.3;max-height:29px;overflow:hidden}
+.andl{position:absolute;left:14px;bottom:3px;font-size:10.5px;color:var(--mu)}
+.wout{border-color:color-mix(in srgb,var(--c) 65%,#2c394b)}
+.wg-side{width:292px;border-left:1px solid var(--line);background:#101823;padding:12px;overflow:auto;cursor:default}
+.wg-side .f{display:flex;flex-direction:column;gap:3px;margin:0 0 8px;color:var(--mu);font-size:12px}
+.wg-side .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wg .wg-side input,.wg .wg-side select,.wg .wg-side textarea,.wg .wg-q{background:#0b1118!important;color:#e8eef5!important;border:1px solid #2c394b!important;border-radius:6px;padding:6px 8px;font:inherit;width:100%;box-sizing:border-box}
+.ph-t{font-weight:700;font-size:12px;color:#9fb6d0;margin:2px 0 8px}.ph-b{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.wg-side .btn{background:#18222f;color:var(--tx);border:1px solid var(--line)}.wg-side .btn.dan{color:#ff8a80}
+.wg-how{margin:0 0 12px 16px;padding:0;color:#b8c6d6;line-height:1.5}.wg-how kbd{background:#223044;border-radius:4px;padding:0 5px}
+.wg-warn{list-style:none;margin:0 0 12px;padding:0}.wg-warn button{all:unset;cursor:pointer;color:#ffcf8a;padding:3px 0;display:block;line-height:1.35}.wg-warn button:hover{text-decoration:underline}
+.wg-leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 4px 0 10px;vertical-align:middle}.wg-leg i:first-child{margin-left:0}
+.wg .hint{color:var(--mu);font-size:12px}.wg .hint.ok{color:#7fe3a4}
+.wg-toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:#2a1d0a;border:1px solid #c98a1a;color:#ffd58a;padding:7px 12px;border-radius:8px;font-size:12.5px}
+@media(max-width:900px){.wg-main{flex-direction:column;height:auto}.wg-vp{height:520px}.wg-side{width:auto;border-left:0;border-top:1px solid var(--line)}}
 </style>
 </head>
 <body>
@@ -987,9 +1037,9 @@ async function save(){
 /* ---------- editor ---------- */
 let tab='inputs',dirty=false,buildT=null;
 function msg(cls,t){const m=$('#ed-msg');if(!t){m.hidden=true;return}m.hidden=false;m.className='ed-msg '+cls;m.textContent=t}
-function openEditor(){draft=clone(cfg());pending={};dirty=false;$('#ed').hidden=false;$('#k-edit').hidden=true;$('#ed-save').disabled=false;msg('ok','Changes show in the diagram straight away. Press “Save for everyone” to keep them.');renderEditor();$('#ed').scrollIntoView({behavior:'smooth',block:'start'})}
+function openEditor(){draft=clone(cfg());pending={};dirty=false;if(typeof WG!=='undefined'){WG.hist=[JSON.stringify(draft)];WG.hp=0;WG.init=false;WG.sel=null}$('#ed').hidden=false;$('#k-edit').hidden=true;$('#ed-save').disabled=false;msg('ok','Changes show in the diagram straight away. Press “Save for everyone” to keep them.');renderEditor();$('#ed').scrollIntoView({behavior:'smooth',block:'start'})}
 function closeEditor(){$('#ed').hidden=true;$('#k-edit').hidden=false;dirty=false;msg()}
-function changed(rebuildEditor){dirty=true;clearTimeout(buildT);buildT=setTimeout(build,150);if(rebuildEditor)renderEditor()}
+function changed(rebuildEditor){if(typeof wgHist==='function')wgHist();dirty=true;clearTimeout(buildT);buildT=setTimeout(build,150);if(rebuildEditor)renderEditor()}
 $('#k-edit').addEventListener('click',openEditor);
 $('#ed-cancel').addEventListener('click',()=>{draft=null;pending={};closeEditor();load()});
 $('#ed-save').addEventListener('click',save);
@@ -1029,7 +1079,8 @@ function renderEditor(){
       ${tools('outputs',i,C.outputs.length)}</div></div>`).join('')+
     `<datalist id="ogroups"><option value="Control Unit Annunciation"><option value="Notification Devices"><option value="Supplementary"></datalist><div><button class="btn pri" data-act="add" data-kind="outputs">+ Add output device</button></div>`;
   }else if(tab==='rules'){
-    b.innerHTML=logicView==='matrix'?matrixHTML(C):sentenceHTML(C);
+    b.innerHTML=logicView==='wire'?viewSwitch()+wgHTML(C)+matrixHTML(C,true):logicView==='matrix'?matrixHTML(C):sentenceHTML(C);
+    if(logicView==='wire')wgAfter();
   }else{
     b.innerHTML=`<p class="hint">Upload short MP3 or WAV files (under 1 MB). Pick which message each rule plays in the Cause &amp; effect tab.</p><div class="voices">`+
     C.voices.map((v,i)=>`<div class="vrow"><input type="text" data-k="voices.${i}.name" value="${esc(v.name)}" aria-label="Message name">
@@ -1039,9 +1090,9 @@ function renderEditor(){
     `</div><div><button class="btn pri" data-act="add" data-kind="voices">+ Add voice message</button></div>`;
   }
 }
-let logicView='matrix';
+let logicView='wire';
 const LET=i=>String.fromCharCode(65+i);
-function viewSwitch(){return `<div class="vsw" role="group" aria-label="Logic view"><button class="btn ${logicView==='matrix'?'pri':''}" data-act="view" data-v="matrix">C&amp;E matrix (table)</button><button class="btn ${logicView==='sent'?'pri':''}" data-act="view" data-v="sent">Sentences (When… Then…)</button><span class="hint">Both views edit the same rules — change one and the other follows.</span></div>`}
+function viewSwitch(){return `<div class="vsw" role="group" aria-label="Logic view"><button class="btn ${logicView==='wire'?'pri':''}" data-act="view" data-v="wire">Wire diagram + matrix</button><button class="btn ${logicView==='matrix'?'pri':''}" data-act="view" data-v="matrix">Matrix only</button><button class="btn ${logicView==='sent'?'pri':''}" data-act="view" data-v="sent">Sentences (When… Then…)</button><span class="hint">Both views edit the same rules — change one and the other follows.</span></div>`}
 function typeSel(r,i){return `<select class="tsel t-${r.type}" data-k="rules.${i}.type" aria-label="Rule type">${Object.entries(TYPE).map(([k,v])=>`<option value="${k}" ${r.type===k?'selected':''}>${v.label}</option>`).join('')}</select>`}
 function colOrder(C){const groups=[];C.outputs.forEach(o=>{const g=o.group||'Notification Devices';if(!groups.includes(g))groups.push(g)});
   const pri=['Control Unit Annunciation','Notification Devices'];groups.sort((a,b)=>{const ia=pri.indexOf(a),ib=pri.indexOf(b);return (ia<0?9:ia)-(ib<0?9:ib)});
@@ -1055,9 +1106,9 @@ function condEditor(r,i,C){
     `<div><button class="btn sm" data-act="addcond" data-i="${i}">+ &amp; (AND) another condition</button></div>`;
 }
 let openCause=null;
-function matrixHTML(C){
+function matrixHTML(C,embed){
   const groups=colOrder(C),ncol=C.outputs.length;
-  let h=viewSwitch()+`<div class="legend"><span><span class="mk on">●</span> Activate (general evacuation / device ON)</span><span><span class="mk sg">◤</span> Supervisory signal</span><span><span class="mk dl">⏱</span> Activate after delay</span><span class="hint">Tap a cell to cycle ● → ◤ → ⏱ → blank. Tap a cause to edit it with &amp; / Or.</span></div>
+  let h=(embed?'<h3 class="mx-h">Matrix table</h3>':viewSwitch())+`<div class="legend"><span><span class="mk on">●</span> Activate (general evacuation / device ON)</span><span><span class="mk sg">◤</span> Supervisory signal</span><span><span class="mk dl">⏱</span> Activate after delay</span><span class="hint">Tap a cell to cycle ● → ◤ → ⏱ → blank. Tap a cause to edit it with &amp; / Or.</span></div>
   <div class="mx-wrap"><table class="mx"><thead><tr><th rowspan="2" class="stk diag"><span class="so">System Output</span><span class="si">System Input</span></th><th rowspan="2">Level</th>`;
   groups.forEach(x=>h+=`<th colspan="${x.cols.length}" class="gh">${esc(x.g)}</th>`);
   h+=`<th rowspan="2">Test</th></tr><tr>`;
@@ -1194,6 +1245,334 @@ $('#file-aud').addEventListener('change',async e=>{
   catch(_){msg('err','Could not read that audio file.')}
 });
 
+
+/* ---------- Logic tab: wire builder ----------
+   Inputs (devices) -> conditions ("any N of") -> rule -> outputs. Drag from a dot to a dot to connect, click a wire to edit it.
+   It reads and writes the same rules as the matrix table and the sentences view, so all three always agree. */
+const WG={sel:null,pan:{x:24,y:16},k:.8,hist:[],hp:-1,flt:'all',q:'',open:new Set(),lay:{},init:false,restoring:false,drag:null,toast:'',M:null};
+try{WG.lay=JSON.parse(localStorage.getItem('fa-wg-lay')||'{}')||{}}catch(e){}
+const wgSaveLay=()=>{try{localStorage.setItem('fa-wg-lay',JSON.stringify(WG.lay))}catch(e){}};
+const WGC={IN:{x:0,w:240},GATE:{x:318,w:92,h:32,gap:40},RULE:{x:486,w:270,h:118},OUT:{x:860,w:240,h:58}};
+const RCOL={fire:'#ff5a52',pre:'#ff9f0a',sup:'#e6c229'};
+const OKC=k=>({audible:'#34c97a',voice:'#34c97a',av:'#34c97a',visual:'#e6c229',control:'#a279ff',signal:'#4da3ff'}[k]||'#8b99aa');
+const P_=s=>String(s).split('|');
+const wgRule=id=>draft&&draft.rules.find(r=>r.id===id);
+function wgHist(now){
+  if(WG.restoring||!draft)return;clearTimeout(WG.ht);
+  const f=()=>{const s=JSON.stringify(draft);if(s===WG.hist[WG.hp])return;WG.hist=WG.hist.slice(0,WG.hp+1);WG.hist.push(s);if(WG.hist.length>60)WG.hist.shift();WG.hp=WG.hist.length-1};
+  if(now)f();else WG.ht=setTimeout(f,350);
+}
+function wgRestore(){WG.restoring=true;draft=JSON.parse(WG.hist[WG.hp]);changed(true);WG.restoring=false}
+function wgUndo(){wgHist(true);if(WG.hp<=0)return;WG.hp--;wgRestore()}
+function wgRedo(){wgHist(true);if(WG.hp>=WG.hist.length-1)return;WG.hp++;wgRestore()}
+function wgGroupOf(C){const m={};C.inputs.forEach(g=>g.points.forEach(p=>m[p.id]=g));return m}
+
+/* ---- layout: rules stacked in the middle, inputs sorted by where they are used, outputs likewise ---- */
+function wgModel(C){
+  const M={rules:[],ins:{},outs:{},ruleBy:{},w:0,h:0};
+  const rows=C.rules.map((r,i)=>({r,i})).filter(x=>WG.flt==='all'||x.r.type===WG.flt);
+  const G=WGC.GATE,R=WGC.RULE;let y=10;
+  rows.forEach(({r,i})=>{
+    const ng=Math.max(1,r.when.length),stack=ng*G.gap-(G.gap-G.h),bh=Math.max(R.h,stack+14);
+    const lo=WG.lay['r|'+r.id]||{dx:0,dy:0};
+    const n={r,i,id:r.id,x:R.x+lo.dx,y:y+(bh-R.h)/2+lo.dy,w:R.w,h:R.h,gates:[]};
+    const top=y+(bh-stack)/2+lo.dy;
+    for(let j=0;j<ng;j++)n.gates.push({j,c:r.when[j]||{groups:[],points:[],min:1},x:G.x+lo.dx,y:top+j*G.gap,w:G.w,h:G.h});
+    M.rules.push(n);M.ruleBy[r.id]=n;y+=bh+22;
+  });
+  const mean=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:Infinity,gOf=wgGroupOf(C),use={},ouse={};
+  M.rules.forEach(n=>{
+    n.gates.forEach(g=>{const cy=g.y+g.h/2;(g.c.groups||[]).forEach(k=>(use[k]=use[k]||[]).push(cy));(g.c.points||[]).forEach(id=>{const gg=gOf[id];if(gg)(use[gg.key]=use[gg.key]||[]).push(cy)})});
+    n.r.outputs.forEach(k=>(ouse[k]=ouse[k]||[]).push(n.y+n.h/2));
+  });
+  const place=(arr,useMap,x,w,hf,key)=>{
+    const vis=arr.map((g,idx)=>({g,idx,m:mean(useMap[g.key]||[])})).filter(o=>WG.flt==='all'||o.m!==Infinity);
+    vis.sort((a,b)=>(a.m===b.m?a.idx-b.idx:a.m-b.m));let yy=10;const out={};
+    vis.forEach(o=>{const lo=WG.lay[key+'|'+o.g.key]||{dx:0,dy:0},h=hf(o.g);out[o.g.key]={g:o.g,x:x+lo.dx,y:yy+lo.dy,w,h,used:o.m!==Infinity};yy+=h+14});
+    return out;
+  };
+  M.ins=place(C.inputs,use,WGC.IN.x,WGC.IN.w,g=>52+(WG.open.has(g.key)&&g.points.length>1?g.points.length*22+8:0),'i');
+  M.outs=place(C.outputs,ouse,WGC.OUT.x,WGC.OUT.w,()=>WGC.OUT.h,'o');
+  let mx=0,my=0;[...M.rules,...Object.values(M.ins),...Object.values(M.outs)].forEach(n=>{mx=Math.max(mx,n.x+n.w);my=Math.max(my,n.y+n.h)});
+  M.w=mx+40;M.h=my+40;
+  // port positions (world coordinates)
+  M.port=s=>{
+    const a=P_(s),t=a[0];
+    if(t==='inG'){const n=M.ins[a[1]];return n&&{x:n.x+n.w,y:n.y+26}}
+    if(t==='inP'){const g=gOf[a[1]],n=g&&M.ins[g.key];if(!n)return null;const j=g.points.findIndex(p=>p.id===a[1]);return (WG.open.has(g.key)&&g.points.length>1)?{x:n.x+n.w,y:n.y+52+j*22+11}:{x:n.x+n.w,y:n.y+26}}
+    if(t==='gate'){const n=M.ruleBy[a[1]],g=n&&n.gates[+a[2]];return g&&{x:g.x,y:g.y+g.h/2}}
+    if(t==='rule'){const n=M.ruleBy[a[1]];return n&&{x:n.x,y:n.y+32}}
+    if(t==='ruleAnd'){const n=M.ruleBy[a[1]];return n&&{x:n.x,y:n.y+n.h-16}}
+    if(t==='ruleOut'){const n=M.ruleBy[a[1]];return n&&{x:n.x+n.w,y:n.y+32}}
+    if(t==='out'){const n=M.outs[a[1]];return n&&{x:n.x,y:n.y+n.h/2}}
+    return null;
+  };
+  return M;
+}
+const wgPath=(a,b)=>{const dx=Math.max(40,Math.abs(b.x-a.x)*.5);return `M${a.x} ${a.y}C${a.x+dx} ${a.y} ${b.x-dx} ${b.y} ${b.x} ${b.y}`};
+function wgWires(C,M){
+  const W=[],gOf=wgGroupOf(C);
+  M.rules.forEach(n=>{
+    const col=RCOL[n.r.type]||'#8b99aa',rin=M.port('rule|'+n.id);
+    n.gates.forEach(g=>{
+      const gin=M.port('gate|'+n.id+'|'+g.j);
+      (g.c.groups||[]).forEach(k=>{const p=M.port('inG|'+k);if(p)W.push({id:'w|in|'+n.id+'|'+g.j+'|g|'+k,a:p,b:gin,col,rid:n.id,t:'in'})});
+      (g.c.points||[]).forEach(id=>{if((g.c.groups||[]).includes(gOf[id]&&gOf[id].key))return;const p=M.port('inP|'+id);if(p)W.push({id:'w|in|'+n.id+'|'+g.j+'|p|'+id,a:p,b:gin,col,rid:n.id,t:'in'})});
+      W.push({id:'w|gr|'+n.id+'|'+g.j,a:{x:g.x+g.w,y:g.y+g.h/2},b:rin,col,rid:n.id,t:'gr'});
+    });
+    n.r.outputs.forEach(k=>{
+      const o=C.outputs.find(x=>x.key===k);if(!o||!M.outs[k])return;const d=+(n.r.delays||{})[k]||0,sg=(n.r.marks||{})[k]==='sup';
+      W.push({id:'w|out|'+n.id+'|'+k,a:M.port('ruleOut|'+n.id),b:M.port('out|'+k),col:OKC(o.kind),rid:n.id,t:'out',lab:(sg?'◤ ':'')+(d?'⏱ '+d+' s':sg?'supervisory':'●'),key:k});
+    });
+  });
+  return W;
+}
+
+/* ---- drawing ---- */
+function wgThumb(o,col){const s=asset(o.img);return s?`<span class="wth"><img src="${s}" alt=""></span>`:`<span class="wth ph" style="color:${col||'#8b99aa'}">${esc((o.name||'?').trim().charAt(0).toUpperCase())}</span>`}
+function wgMatch(txt){return !WG.q||String(txt).toLowerCase().includes(WG.q.toLowerCase())}
+function wgNodes(C,M){
+  let h='';const selR=WG.sel&&(WG.sel.t==='rule'?WG.sel.id:WG.sel.rid)||null,selRule=selR&&M.ruleBy[selR];
+  const conn=new Set();if(selRule){selRule.gates.forEach(g=>{(g.c.groups||[]).forEach(k=>conn.add('i|'+k));(g.c.points||[]).forEach(id=>{const gg=wgGroupOf(C)[id];if(gg)conn.add('i|'+gg.key)})});selRule.r.outputs.forEach(k=>conn.add('o|'+k))}
+  Object.values(M.ins).forEach(n=>{
+    const g=n.g,open=WG.open.has(g.key)&&g.points.length>1,hit=wgMatch(g.name+' '+g.sub+' '+g.points.map(p=>p.id+' '+(p.addr||'')+' '+(p.label||'')).join(' '));
+    const dim=(selRule&&!conn.has('i|'+g.key))||(WG.q&&!hit);
+    h+=`<div class="wn win${dim?' dim':''}${WG.q&&hit?' hit':''}${n.used?'':' unused'}" data-drop="inG|${esc(g.key)}" data-nid="i|${esc(g.key)}" style="left:${n.x}px;top:${n.y}px;width:${n.w}px;height:${n.h}px">
+      <div class="wh">${wgThumb(g,'#ff8a80')}<div class="wt"><b>${esc(g.name.replace(/ \(.*\)/,''))}</b><small>${esc(g.points.length>1?g.points.length+' devices':(g.points[0]?g.points[0].id:''))}${n.used?'':' · not used'}</small></div>${g.points.length>1?`<button class="wtog" data-wg="tog" data-key="${esc(g.key)}" title="Show each device">${open?'▾':'▸'}</button>`:''}</div>
+      <i class="pt r" style="top:26px" data-pt="inG|${esc(g.key)}" data-drop="inG|${esc(g.key)}" title="Whole group: drag to a condition"></i>
+      ${open?g.points.map((p,j)=>`<div class="wp" data-drop="inP|${esc(p.id)}" style="top:${52+j*22}px"><span>${esc(p.label||p.id)}${p.addr?` <em>${esc(p.addr)}</em>`:''}</span><i class="pt r" data-pt="inP|${esc(p.id)}" data-drop="inP|${esc(p.id)}" title="Only this device"></i></div>`).join(''):''}
+    </div>`;
+  });
+  M.rules.forEach(n=>{
+    const r=n.r,col=RCOL[r.type]||'#8b99aa',sel=WG.sel&&((WG.sel.t==='rule'&&WG.sel.id===r.id)),dim=(selRule&&selRule!==n)||(WG.q&&!wgMatch(r.name+' '+r.zone));
+    n.gates.forEach(g=>{
+      const empty=!cset(g.c).size,sg=WG.sel&&WG.sel.t==='gate'&&WG.sel.rid===r.id&&WG.sel.j===g.j;
+      h+=`<div class="wn wgate${empty?' empty':''}${sg?' sel':''}${selRule&&selRule!==n?' dim':''}" data-drop="gate|${esc(r.id)}|${g.j}" data-nid="g|${esc(r.id)}|${g.j}" style="left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.h}px;--c:${col}" title="Click to change how many must be on">
+        <i class="pt l" style="top:50%" data-pt="gate|${esc(r.id)}|${g.j}" data-drop="gate|${esc(r.id)}|${g.j}"></i><span>${empty?'drag input here':`ANY ${Math.max(1,+g.c.min||1)} of ${cset(g.c).size}`}${+g.c.hold?` · ${+g.c.hold} min`:''}</span><i class="pt r" style="top:50%"></i></div>`;
+    });
+    const nout=r.outputs.length;
+    h+=`<div class="wn wrule t-${r.type}${sel?' sel':''}${dim?' dim':''}${WG.q&&wgMatch(r.name+' '+r.zone)?' hit':''}" data-drop="rule|${esc(r.id)}" data-nid="r|${esc(r.id)}" style="left:${n.x}px;top:${n.y}px;width:${n.w}px;height:${n.h}px;--c:${col}">
+      <i class="pt l" style="top:32px" data-pt="rule|${esc(r.id)}" data-drop="rule|${esc(r.id)}" title="Drop an input here"></i>
+      <i class="pt r" style="top:32px" data-pt="ruleOut|${esc(r.id)}" data-drop="ruleOut|${esc(r.id)}" title="Drag to an output"></i>
+      <div class="wh"><span class="tp">${esc(TYPE[r.type].label)}</span><b>${esc(r.name)}</b></div>
+      <div class="wsub">${esc(r.zone||'General')} · ${nout?nout+' effect'+(nout===1?'':'s'):'<u>no effects yet</u>'}</div>
+      <div class="wsub2">${esc(causeText(r).replace(/ \((Double|Single) Activation\)$| \(Supervisory\)$/,''))}</div>
+      <i class="pt l and" style="top:${n.h-16}px" data-pt="ruleAnd|${esc(r.id)}" data-drop="ruleAnd|${esc(r.id)}" title="Drop an input here to add another AND condition"></i><span class="andl">+ AND</span>
+    </div>`;
+  });
+  Object.values(M.outs).forEach(n=>{
+    const o=n.g,col=OKC(o.kind),hit=wgMatch(o.name+' '+o.sub),dim=(selRule&&!conn.has('o|'+o.key))||(WG.q&&!hit);
+    h+=`<div class="wn wout${dim?' dim':''}${WG.q&&hit?' hit':''}${n.used?'':' unused'}" data-drop="out|${esc(o.key)}" data-nid="o|${esc(o.key)}" style="left:${n.x}px;top:${n.y}px;width:${n.w}px;height:${n.h}px;--c:${col}">
+      <i class="pt l" style="top:50%" data-pt="out|${esc(o.key)}" data-drop="out|${esc(o.key)}" title="Drop a rule here"></i>
+      <div class="wh">${wgThumb(o,col)}<div class="wt"><b>${esc(dn3(o.name).replace(/\s*\(.*\)/,''))}</b><small>${esc(KIND[o.kind]?KIND[o.kind].split(' (')[0]:'')}${n.used?'':' · not used'}</small></div></div></div>`;
+  });
+  return h;
+}
+function wgSvg(C,M){
+  const W=wgWires(C,M),selR=WG.sel&&(WG.sel.t==='rule'?WG.sel.id:WG.sel.rid);let h='';
+  W.forEach(w=>{
+    if(!w.a||!w.b)return;const d=wgPath(w.a,w.b),sel=WG.sel&&WG.sel.t==='wire'&&WG.sel.id===w.id,dim=selR&&w.rid!==selR&&!sel;
+    h+=`<g class="wr${w.t==='out'?' eff':''}${sel?' sel':''}${dim?' dim':''}${w.t==='out'&&selR&&w.rid===selR?' foc':''}" data-wid="${esc(w.id)}"><path class="hit" d="${d}"/><path class="vis" d="${d}" style="stroke:${w.col}"/>`;
+    if(w.lab&&(sel||(selR&&w.rid===selR))){const mx=(w.a.x+w.b.x)/2,my=(w.a.y+w.b.y)/2,wd=w.lab.length*6.4+16;h+=`<g class="lab" transform="translate(${mx-wd/2} ${my-10})"><rect width="${wd}" height="20" rx="10"/><text x="${wd/2}" y="14" text-anchor="middle">${esc(w.lab)}</text></g>`}
+    h+=`</g>`;
+  });
+  return h+`<path id="wg-tmp" class="tmp" d="" style="display:none"/>`;
+}
+function wgNote(C){
+  const w=[];
+  C.rules.forEach(r=>{if(!r.outputs.length)w.push({t:'rule',id:r.id,x:`“${r.name}” has no effects`});if(r.when.some(c=>!cset(c).size))w.push({t:'rule',id:r.id,x:`“${r.name}” has an empty condition`})});
+  const used=new Set();C.rules.forEach(r=>r.when.forEach(c=>cset(c).forEach(id=>used.add(id))));
+  C.inputs.forEach(g=>{if(!g.points.some(p=>used.has(p.id)))w.push({t:'i',id:g.key,x:`Input “${g.name.replace(/ \(.*\)/,'')}” is not used by any rule`})});
+  const ou=new Set();C.rules.forEach(r=>r.outputs.forEach(k=>ou.add(k)));
+  C.outputs.forEach(o=>{if(!ou.has(o.key))w.push({t:'o',id:o.key,x:`Output “${dn3(o.name).replace(/\s*\(.*\)/,'')}” is never turned on`})});
+  return w;
+}
+function wgPanel(C){
+  const s=WG.sel;let h='';
+  if(s&&s.t==='rule'){
+    const i=C.rules.findIndex(r=>r.id===s.id),r=C.rules[i];if(r){
+      h=`<div class="ph-t">Rule</div>
+      <label class="f">Name<input type="text" data-k="rules.${i}.name" value="${esc(r.name)}"></label>
+      <div class="row2"><label class="f">Type${typeSel(r,i)}</label><label class="f">Zone<input type="text" data-k="rules.${i}.zone" value="${esc(r.zone||'')}" list="zones"></label></div>
+      <label class="f">Screen heading<input type="text" data-k="rules.${i}.screen" value="${esc(r.screen)}" placeholder="e.g. 2ND ALARM"></label>
+      <label class="f">Voice message<select data-k="rules.${i}.voice"><option value="">None</option>${C.voices.map(v=>`<option value="${v.id}" ${r.voice===v.id?'selected':''}>${esc(v.name)}</option>`).join('')}</select></label>
+      <label class="f">Extra screen lines<textarea data-k="rules.${i}.lines" rows="2">${esc(r.lines)}</textarea></label>
+      <div class="ph-b"><button class="btn sm" data-wg="test" data-id="${esc(r.id)}">▶ Test this rule</button><button class="btn sm" data-wg="addgate" data-id="${esc(r.id)}">+ AND condition</button><button class="btn sm dan" data-wg="delrule" data-id="${esc(r.id)}">Delete rule</button></div>
+      <p class="hint">The rule is on when <b>all</b> its conditions are met. Click a wire to set a delay.</p>`;
+    }
+  }else if(s&&s.t==='gate'){
+    const i=C.rules.findIndex(r=>r.id===s.rid),r=C.rules[i],c=r&&r.when[s.j];
+    if(c){h=`<div class="ph-t">Condition</div><p class="hint">${esc(r.name)}</p>
+      <label class="f">At least this many of the wired inputs must be on<input type="number" min="1" max="20" data-k="rules.${i}.when.${s.j}.min" value="${c.min||1}"></label>
+      <label class="f">…and stay on for (minutes, 0 = no wait)<input type="number" min="0" max="120" step="0.5" data-k="rules.${i}.when.${s.j}.hold" value="${+c.hold||0}"></label>
+      <div class="ph-b"><button class="btn sm dan" data-wg="delgate" data-id="${esc(r.id)}" data-j="${s.j}">Remove condition</button></div>`}
+  }else if(s&&s.t==='wire'){
+    const a=P_(s.id),r=wgRule(a[2]),i=draft?draft.rules.findIndex(x=>x.id===a[2]):-1;
+    if(r&&a[1]==='out'){const o=C.outputs.find(x=>x.key===a[3]),sg=(r.marks||{})[a[3]]==='sup',d=+(r.delays||{})[a[3]]||0;
+      h=`<div class="ph-t">Effect</div><p class="hint"><b>${esc(r.name)}</b> → <b>${esc(o?dn3(o.name):a[3])}</b></p>
+      <label class="f">How it turns on<select data-wg="mark" data-id="${esc(r.id)}" data-o="${esc(a[3])}"><option value="on" ${sg?'':'selected'}>● Activate</option><option value="sup" ${sg?'selected':''}>◤ Supervisory signal</option></select></label>
+      <label class="f">Delay in seconds (0 = immediately)<input type="number" min="0" max="600" data-k="rules.${i}.delays.${a[3]}" value="${d}"></label>
+      <div class="ph-b"><button class="btn sm dan" data-wg="delwire" data-w="${esc(s.id)}">Remove this wire</button></div>`}
+    else if(r&&a[1]==='in'){h=`<div class="ph-t">Cause</div><p class="hint">This input is part of a condition of <b>${esc(r.name)}</b>.</p><div class="ph-b"><button class="btn sm dan" data-wg="delwire" data-w="${esc(s.id)}">Remove this wire</button></div>`}
+  }
+  if(!h){
+    const w=wgNote(C);
+    h=`<div class="ph-t">How to use</div><ul class="wg-how"><li>Drag from a <b>dot</b> on an input to a rule’s <b>left dot</b> (or its condition) to say “this causes it”.</li><li>Drag from a rule’s <b>right dot</b> to an output to say “this turns it on”.</li><li>Click a rule, condition or wire to edit it. <kbd>Del</kbd> removes the selected wire.</li><li>Click a rule to see only its wires. Drag the empty area to move, scroll to zoom.</li></ul>
+    <div class="ph-t">Check${w.length?` · ${w.length}`:''}</div>${w.length?`<ul class="wg-warn">${w.slice(0,12).map(x=>`<li><button data-wg="goto" data-t="${x.t}" data-id="${esc(x.id)}">${esc(x.x)}</button></li>`).join('')}</ul>`:'<p class="hint ok">Nothing to fix.</p>'}
+    <div class="ph-t">Colours</div><p class="wg-leg"><i style="background:${RCOL.sup}"></i>Supervisory <i style="background:${RCOL.pre}"></i>1st alarm <i style="background:${RCOL.fire}"></i>2nd alarm</p>`;
+  }
+  return h;
+}
+function wgHTML(C){
+  const flt=(v,t)=>`<button class="wbtn${WG.flt===v?' on':''}" data-wg="flt" data-v="${v}">${t}</button>`;
+  return `<div class="wg" id="wg"><div class="wg-bar">
+    <b class="wg-title">Cause &amp; effect<span> · drag from a dot to connect</span></b><span class="wg-sp"></span>
+    <input class="wg-q" type="search" placeholder="Find a device or rule…" value="${esc(WG.q)}" data-wg-q aria-label="Find">
+    <span class="wg-seg">${flt('all','All')}${flt('sup','Supervisory')}${flt('pre','1st alarm')}${flt('fire','2nd alarm')}</span>
+    <button class="wbtn" data-wg="undo" title="Undo (Ctrl+Z)">↶</button><button class="wbtn" data-wg="redo" title="Redo (Ctrl+Y)">↷</button>
+    <button class="wbtn" data-wg="fit" title="Fit everything in view">Fit</button><button class="wbtn" data-wg="zout">−</button><span class="wg-z" id="wg-z">${Math.round(WG.k*100)}%</span><button class="wbtn" data-wg="zin">+</button>
+    <button class="wbtn" data-wg="tidy" title="Forget moved boxes and re-arrange">Tidy</button><button class="wbtn pri" data-wg="newrule">+ New rule</button></div>
+    <div class="wg-main"><div class="wg-vp" id="wg-vp" tabindex="0" aria-label="Cause and effect diagram"><div class="wg-world" id="wg-world"></div><div class="wg-toast" id="wg-toast" hidden></div></div>
+    <aside class="wg-side" id="wg-side"></aside></div></div>`;
+}
+function wgPaint(){
+  const C=draft;if(!C||!$('#wg-world'))return;const M=WG.M=wgModel(C);
+  $('#wg-world').innerHTML=`<svg class="wg-svg" width="${M.w}" height="${M.h}">${wgSvg(C,M)}</svg>`+wgNodes(C,M);
+  wgXform();
+}
+function wgPanelPaint(){if(draft&&$('#wg-side'))$('#wg-side').innerHTML=wgPanel(draft)}
+function wgXform(){const w=$('#wg-world');if(!w)return;w.style.transform=`translate(${WG.pan.x}px,${WG.pan.y}px) scale(${WG.k})`;const z=$('#wg-z');if(z)z.textContent=Math.round(WG.k*100)+'%'}
+function wgFit(wide){const vp=$('#wg-vp');if(!vp||!WG.M)return;const k=wide?Math.max(.6,Math.min(1,(vp.clientWidth-30)/WG.M.w)):Math.max(.3,Math.min(1,(vp.clientWidth-30)/WG.M.w,(vp.clientHeight-20)/WG.M.h));WG.k=k;WG.pan={x:Math.max(10,(vp.clientWidth-WG.M.w*k)/2),y:10};wgXform()}
+function wgFocus(id){const n=WG.M&&(WG.M.ruleBy[id]||WG.M.ins[id]||WG.M.outs[id]);const vp=$('#wg-vp');if(!n||!vp)return;WG.pan={x:vp.clientWidth/2-(n.x+n.w/2)*WG.k,y:vp.clientHeight/2-(n.y+n.h/2)*WG.k};wgXform()}
+function wgToast(t){const e=$('#wg-toast');if(!e)return;e.textContent=t;e.hidden=false;clearTimeout(WG.tt);WG.tt=setTimeout(()=>{e.hidden=true},3200)}
+function wgAfter(){ /* called after the editor HTML is rebuilt */
+  if(!$('#wg'))return;wgPaint();wgPanelPaint();if(!WG.init){WG.init=true;wgFit(true)}if(WG.pendingFocus){wgFocus(WG.pendingFocus);WG.pendingFocus=null}
+}
+
+/* ---- editing ---- */
+function wgCommit(){wgHist(true);changed(true)}
+function wgAddInput(src,dst){
+  const C=draft,[st,sid]=P_(src),[ct,rid,jj]=P_(dst),r=wgRule(rid);if(!r)return;
+  const gOf=wgGroupOf(C),g=st==='inG'?C.inputs.find(x=>x.key===sid):gOf[sid];if(!g){return}
+  const ids=st==='inG'?g.points.map(p=>p.id):[sid];
+  if(r.when.some(c=>ids.every(id=>cset(c).has(id)))){wgToast('That input is already part of this rule.');return}
+  let c;
+  if(ct==='gate')c=r.when[+jj];
+  else if(ct==='ruleAnd'){c={groups:[],points:[],min:1};r.when.push(c)}
+  else{c=r.when[0];if(!c){c={groups:[],points:[],min:1};r.when.push(c)}}
+  if(!c)return;
+  const set=cset(c);ids.forEach(id=>set.add(id));setCond(c,[...set]);
+  c.min=Math.max(1,Math.min(+c.min||1,cset(c).size));
+  WG.sel={t:'rule',id:rid};wgCommit();
+}
+function wgAddOutput(rid,key){
+  const r=wgRule(rid);if(!r)return;if(r.outputs.includes(key)){wgToast('That output is already turned on by this rule.');return}
+  r.outputs.push(key);WG.sel={t:'wire',id:'w|out|'+rid+'|'+key};wgCommit();
+}
+function wgConnect(a,b){
+  const fam=s=>({inG:'src',inP:'src',gate:'cond',rule:'cond',ruleAnd:'cond',ruleOut:'act',out:'sink'}[P_(s)[0]]);
+  let fa=fam(a),fb=fam(b);if(!fa||!fb||a===b)return;
+  if(fa==='cond'&&fb==='src'){[a,b]=[b,a];[fa,fb]=[fb,fa]}
+  if(fa==='sink'&&fb==='act'){[a,b]=[b,a];[fa,fb]=[fb,fa]}
+  if(fa==='src'&&fb==='cond')return wgAddInput(a,b);
+  if(fa==='act'&&fb==='sink')return wgAddOutput(P_(a)[1],P_(b)[1]);
+  wgToast('Connect an input to a rule, or a rule to an output.');
+}
+function wgDelWire(id){
+  const a=P_(id),r=wgRule(a[2]);if(!r)return;
+  if(a[1]==='out'){r.outputs=r.outputs.filter(k=>k!==a[3]);if(r.delays)delete r.delays[a[3]];if(r.marks)delete r.marks[a[3]]}
+  else if(a[1]==='in'){const c=r.when[+a[3]];if(!c)return;const ids=a[4]==='g'?(draft.inputs.find(g=>g.key===a[5])?.points||[]).map(p=>p.id):[a[5]];const left=[...cset(c)].filter(x=>!ids.includes(x));setCond(c,left);c.min=Math.max(1,Math.min(+c.min||1,left.length||1))}
+  else return;
+  WG.sel=null;wgCommit();
+}
+function wgDelGate(rid,j){const r=wgRule(rid);if(!r)return;if(r.when.length>1)r.when.splice(j,1);else r.when=[{groups:[],points:[],min:1}];WG.sel={t:'rule',id:rid};wgCommit()}
+function wgDelRule(id){const i=draft.rules.findIndex(r=>r.id===id);if(i<0)return;draft.rules.splice(i,1);WG.sel=null;wgCommit()}
+function wgNewRule(){
+  const t=WG.flt==='all'?'pre':WG.flt,last=draft.rules[draft.rules.length-1];
+  const nr={id:uid('r'),name:'New cause',type:t,zone:last?.zone||'General',when:[{groups:[],points:[],min:1}],outputs:[],delays:{},marks:{},screen:'',lines:'',voice:''};
+  draft.rules.push(nr);WG.sel={t:'rule',id:nr.id};WG.pendingFocus=nr.id;wgCommit();
+}
+function wgClient(e){const vp=$('#wg-vp').getBoundingClientRect();return {x:(e.clientX-vp.left-WG.pan.x)/WG.k,y:(e.clientY-vp.top-WG.pan.y)/WG.k}}
+function wgDropAt(e){for(const el of document.elementsFromPoint(e.clientX,e.clientY)){const d=el.closest&&el.closest('[data-drop]');if(d)return d.dataset.drop}return null}
+function wgDragMove(e){
+  const d=WG.drag;if(!d)return;
+  const dx=e.clientX-d.sx,dy=e.clientY-d.sy;if(!d.moved&&Math.hypot(dx,dy)>4)d.moved=true;
+  if(d.mode==='wire'){const p=WG.M.port(d.from),t=$('#wg-tmp');if(!p||!t)return;const q=wgClient(e),rev=d.rev;t.style.display='';t.setAttribute('d',rev?wgPath(q,p):wgPath(p,q));
+    const over=wgDropAt(e);document.querySelectorAll('.pt.ok').forEach(x=>x.classList.remove('ok'));document.querySelectorAll('.wn.tgt').forEach(x=>x.classList.remove('tgt'));
+    if(over){const el=document.querySelector(`[data-drop="${CSS.escape(over)}"]`);if(el)(el.classList.contains('wn')?el:el.closest('.wn')||el).classList.add('tgt')}}
+  else if(d.mode==='pan'){WG.pan={x:d.px+dx,y:d.py+dy};wgXform()}
+  else if(d.mode==='node'&&d.moved){WG.lay[d.key]={dx:d.ox+dx/WG.k,dy:d.oy+dy/WG.k};wgPaint()}
+}
+function wgDragEnd(e){
+  const d=WG.drag;WG.drag=null;document.removeEventListener('pointermove',wgDragMove);document.removeEventListener('pointerup',wgDragEnd);
+  document.querySelectorAll('.tgt').forEach(x=>x.classList.remove('tgt'));const t=$('#wg-tmp');if(t)t.style.display='none';
+  if(!d)return;
+  if(d.mode==='wire'){if(d.moved){const to=wgDropAt(e);if(to)wgConnect(d.from,to);else wgPaint()}return}
+  if(d.mode==='node'){if(d.moved){wgSaveLay();return}}
+  // plain click
+  if(!d.moved&&d.click){
+    const c=d.click;
+    if(c.wire)WG.sel={t:'wire',id:c.wire};
+    else if(c.gate)WG.sel={t:'gate',rid:c.gate[0],j:+c.gate[1]};
+    else if(c.rule)WG.sel={t:'rule',id:c.rule};
+    else WG.sel=null;
+    wgPaint();wgPanelPaint();
+  }
+}
+function wgDown(e){
+  const root=e.target.closest&&e.target.closest('#wg-vp');if(!root||e.button)return;
+  if(e.target.closest('[data-wg],input,select,textarea,button'))return;
+  e.preventDefault();wgHist(true);
+  const pt=e.target.closest('[data-pt]');
+  if(pt){WG.drag={mode:'wire',from:pt.dataset.pt,rev:pt.classList.contains('l'),sx:e.clientX,sy:e.clientY,moved:false}}
+  else{
+    const wr=e.target.closest('[data-wid]'),nd=e.target.closest('.wn'),click={};
+    const id=nd?nd.dataset.nid.split('|'):null;
+    if(wr)click.wire=wr.dataset.wid;
+    else if(id&&id[0]==='g')click.gate=[id[1],id[2]];
+    else if(id&&id[0]==='r')click.rule=id[1];
+    if(id&&!wr&&id[0]!=='g'){const key=id[0]+'|'+id[1],lo=WG.lay[key]||{dx:0,dy:0};WG.drag={mode:'node',key,ox:lo.dx,oy:lo.dy,sx:e.clientX,sy:e.clientY,moved:false,click}}
+    else if(wr||nd)WG.drag={mode:'click',click,sx:e.clientX,sy:e.clientY,moved:false};
+    else WG.drag={mode:'pan',px:WG.pan.x,py:WG.pan.y,sx:e.clientX,sy:e.clientY,moved:false,click:{}};
+  }
+  document.addEventListener('pointermove',wgDragMove);document.addEventListener('pointerup',wgDragEnd);
+}
+function wgBtn(b){
+  const a=b.dataset.wg;if(a!=='tog'&&a!=='fit'&&a!=='zin'&&a!=='zout')wgHist(true);
+  if(a==='tog'){const k=b.dataset.key;WG.open.has(k)?WG.open.delete(k):WG.open.add(k);wgPaint();return}
+  if(a==='flt'){WG.flt=b.dataset.v;WG.sel=null;WG.init=false;renderEditor();return}
+  if(a==='undo')return wgUndo();if(a==='redo')return wgRedo();
+  if(a==='fit'){wgFit();return}
+  if(a==='zin'||a==='zout'){const vp=$('#wg-vp'),f=a==='zin'?1.2:1/1.2,nk=Math.max(.3,Math.min(1.6,WG.k*f)),cx=vp.clientWidth/2,cy=vp.clientHeight/2;WG.pan={x:cx-(cx-WG.pan.x)*nk/WG.k,y:cy-(cy-WG.pan.y)*nk/WG.k};WG.k=nk;wgXform();return}
+  if(a==='tidy'){WG.lay={};wgSaveLay();wgPaint();wgFit(true);return}
+  if(a==='newrule')return wgNewRule();
+  if(a==='test'){const r=wgRule(b.dataset.id);if(r)testRule(r);return}
+  if(a==='addgate'){const r=wgRule(b.dataset.id);if(r){r.when.push({groups:[],points:[],min:1});WG.sel={t:'gate',rid:r.id,j:r.when.length-1};wgCommit()}return}
+  if(a==='delrule')return wgDelRule(b.dataset.id);
+  if(a==='delgate')return wgDelGate(b.dataset.id,+b.dataset.j);
+  if(a==='delwire')return wgDelWire(b.dataset.w);
+  if(a==='goto'){const t=b.dataset.t,id=b.dataset.id;if(t==='rule'){WG.sel={t:'rule',id};wgPaint();wgPanelPaint();wgFocus(id)}else{WG.q='';wgPaint();wgFocus(id)}return}
+}
+/* delegated events (set up once) */
+$('#ed-body').addEventListener('pointerdown',wgDown);
+$('#ed-body').addEventListener('click',e=>{const b=e.target.closest('button[data-wg]');if(b){e.preventDefault();wgBtn(b)}});
+$('#ed-body').addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.wg==='mark'){const r=wgRule(t.dataset.id);if(!r)return;r.marks=r.marks||{};if(t.value==='sup')r.marks[t.dataset.o]='sup';else delete r.marks[t.dataset.o];wgCommit()}});
+$('#ed-body').addEventListener('input',e=>{
+  const t=e.target;if(t.dataset&&t.dataset.wgQ!==undefined){WG.q=t.value;wgPaint();return}
+  if(t.dataset&&t.dataset.k&&$('#wg')){clearTimeout(WG.pt);WG.pt=setTimeout(wgPaint,160)}
+});
+$('#ed-body').addEventListener('keydown',e=>{if(e.target.dataset&&e.target.dataset.wgQ!==undefined&&e.key==='Enter'){const f=(WG.M&&[...Object.values(WG.M.ins),...Object.values(WG.M.outs)].find(n=>wgMatch((n.g.name||'')+' '+(n.g.sub||''))))||null;if(f)wgFocus(f.g.key)}});
+$('#ed-body').addEventListener('wheel',e=>{
+  const vp=e.target.closest&&e.target.closest('#wg-vp');if(!vp)return;e.preventDefault();
+  const r=vp.getBoundingClientRect(),nk=Math.max(.3,Math.min(1.6,WG.k*Math.pow(1.0015,-e.deltaY))),mx=e.clientX-r.left,my=e.clientY-r.top;
+  WG.pan={x:mx-(mx-WG.pan.x)*nk/WG.k,y:my-(my-WG.pan.y)*nk/WG.k};WG.k=nk;wgXform();
+},{passive:false});
+document.addEventListener('keydown',e=>{
+  if(!draft||$('#ed').hidden||!$('#wg'))return;const tg=e.target;if(tg&&/^(INPUT|SELECT|TEXTAREA)$/.test(tg.tagName))return;
+  if((e.key==='Delete'||e.key==='Backspace')&&WG.sel){e.preventDefault();if(WG.sel.t==='wire')wgDelWire(WG.sel.id);else if(WG.sel.t==='gate')wgDelGate(WG.sel.rid,WG.sel.j)}
+  else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?wgRedo():wgUndo()}
+  else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();wgRedo()}
+});
 
 // Quick-start tutorial: shown on first visit and available from the top bar
 const guideDialog=document.getElementById('guide-dialog');
