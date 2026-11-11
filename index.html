@@ -412,8 +412,10 @@ label.f{font-size:12px;}
 .v3-side>*{pointer-events:auto}
 .v3-leg{position:static;display:flex;flex-direction:column;gap:3px;padding:6px 9px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);pointer-events:none;opacity:.95}
 .v3-pump{position:absolute;left:10px;top:8px;z-index:2;display:flex;flex-direction:column;gap:5px;padding:7px 10px;border-radius:6px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);cursor:pointer;min-width:134px;text-align:left;font-family:inherit}
-.v3-fire{position:absolute;left:10px;top:104px;z-index:2;display:flex;flex-direction:column;gap:4px;padding:7px 10px;border-radius:6px;background:var(--surface);border:1px solid #d9822b;border-left:5px solid #e8590c;font-size:11px;color:var(--muted);cursor:pointer;min-width:134px;max-width:230px;text-align:left;font-family:inherit}
-.v3-fire[hidden]{display:none}.v3-fire b{font-size:12px;color:var(--fg)}.v3-fire .bar2{height:4px;background:var(--line);border-radius:2px;overflow:hidden}.v3-fire .bar2 i{display:block;height:100%;background:#e8590c}
+.v3-huds{position:absolute;left:10px;top:104px;z-index:2;display:flex;flex-direction:column;gap:6px;max-width:230px;pointer-events:none}.v3-huds>*{pointer-events:auto}
+.v3-fire,.v3-ppl{display:flex;flex-direction:column;gap:4px;padding:7px 10px;border-radius:6px;background:var(--surface);border:1px solid #d9822b;border-left:5px solid #e8590c;font-size:11px;color:var(--muted);cursor:pointer;min-width:134px;max-width:230px;text-align:left;font-family:inherit}
+.v3-ppl{border-color:#2b6cc4;border-left:5px solid #2b6cc4;cursor:default}.v3-ppl b{font-size:12px;color:var(--fg)}.v3-ppl .bar2 i{background:#2b6cc4}.v3-ppl.done .bar2 i{background:#2e9d4f}.v3-ppl.bad{border-color:#c1121f;border-left-color:#c1121f}
+.v3-fire[hidden],.v3-ppl[hidden]{display:none}.v3-fire b{font-size:12px;color:var(--fg)}.v3-fire .bar2{height:4px;background:var(--line);border-radius:2px;overflow:hidden}.v3-fire .bar2 i{display:block;height:100%;background:#e8590c}
 .v3-fire .n2{line-height:1.3}
 .v3-pump:hover,.v3-pump:focus-visible{border-color:var(--muted)}
 .v3-pump .hd{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.v3-pump .hd b{font-size:11px;color:var(--fg)}
@@ -437,7 +439,7 @@ label.f{font-size:12px;}
 .v3-cap .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.v3-cap .btn{padding:3px 10px;font-size:12px}
 .v3-cap .prog{height:3px;background:var(--line);border-radius:2px;overflow:hidden}.v3-cap .prog i{display:block;height:100%;background:var(--accent);width:0}
 .v3-infobtn{display:none;position:absolute;left:8px;top:8px;z-index:3}
-@media(max-width:560px){.v3-infobtn{display:inline-flex}.v3-stage .v3-pump,.v3-stage .v3-side{display:none}.v3-stage.info-open .v3-pump{display:flex;top:46px}.v3-fire{top:46px}.v3-stage.info-open .v3-fire{top:140px}.v3-stage.info-open .v3-side{display:flex}.v3-cap{bottom:6px}.v3-menu{right:auto;left:0}}
+@media(max-width:560px){.v3-infobtn{display:inline-flex}.v3-stage .v3-pump,.v3-stage .v3-side{display:none}.v3-stage.info-open .v3-pump{display:flex;top:46px}.v3-huds{top:46px}.v3-stage.info-open .v3-huds{top:140px}.v3-stage.info-open .v3-side{display:flex}.v3-cap{bottom:6px}.v3-menu{position:fixed;right:8px;left:8px;bottom:8px;min-width:0;max-height:60vh;overflow:auto}}
 .v3-act{background:var(--surface);border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--muted)}
 .v3-act .hd{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer}
 .v3-act .hd:focus-visible{outline:2px solid var(--accent)}
@@ -501,7 +503,8 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
         </div></div>
     </div>
       <button class="v3-pump" id="v3-pumphud" type="button" aria-label="Fire pump status. Open the fire pump page"><span class="hd"><b>Fire pump</b><span id="vp-p">–</span></span><span class="ch"><span class="vp-c" data-k="0" title="Jockey pump"><i></i>J</span><span class="vp-c" data-k="1" title="Electric pump (duty)"><i></i>E</span><span class="vp-c" data-k="2" title="Diesel pump (standby)"><i></i>D</span></span><span id="vp-t">Tank –</span><span class="go">Open pump page</span></button>
-      <button class="v3-fire" id="v3-firehud" type="button" hidden aria-live="polite" title="Go to the fire"></button>
+      <div class="v3-huds"><button class="v3-fire" id="v3-firehud" type="button" hidden aria-live="polite" title="Go to the fire"></button>
+        <div class="v3-ppl" id="v3-pplhud" hidden aria-live="polite"></div></div>
       <div class="v3-hint">Drag to orbit · scroll or pinch to zoom · tap a detector, call point or valve to trigger it</div>
     </div>
     <div class="v3-bot">
@@ -530,6 +533,8 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
         <div class="v3-menu" id="m-scn" role="menu" hidden></div></span>
       <span class="v3-menuwrap"><button class="btn" id="v3-fire" type="button" aria-haspopup="true" aria-expanded="false">Fire ▾</button>
         <div class="v3-menu" id="m-fire" role="menu" hidden></div></span>
+      <span class="v3-menuwrap"><button class="btn" id="v3-ppl" type="button" aria-haspopup="true" aria-expanded="false">People ▾</button>
+        <div class="v3-menu" id="m-ppl" role="menu" hidden></div></span>
       <button class="btn" id="v3-snap" type="button" title="Save the current 3D view as an image with the alarm summary">Snapshot</button>
     </div>
   </section>
@@ -1215,7 +1220,7 @@ aboutDialog.addEventListener('click',e=>{if(e.target===aboutDialog)closeAbout()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!aboutDialog.hidden)closeAbout()});
 
 /* ---------- 3D building view (loads fire3d.js on first use) ---------- */
-let F3=null,f3Pending=null,view3=false,LASTC=null,fireLast='';
+let F3=null,f3Pending=null,view3=false,LASTC=null,fireLast='',pplLast='';
 function f3Describe(d){
   if(d.kind==='in'){const f=findPoint(d.id);if(!f)return '';const on=S.on.has(d.id);
     return `<b>${esc(d.id)}</b> · ${esc(f.g.name.replace(/ \(.*\)/,''))}${f.p.label?' · '+esc(f.p.label):''}<br>${esc(f.p.addr||'')} — ${on?'<b>IN ALARM</b> · tap to clear':'Normal · tap to trigger'}`}
@@ -1252,8 +1257,8 @@ function f3Sync(c){
 }
 function f3Init(){
   if(F3)return Promise.resolve(F3);
-  if(!f3Pending)f3Pending=Promise.all([document.fonts.load('700 38px "Atkinson Hyperlegible"'),import('./fire3d.js?v=11')]).then(([,m])=>{
-    m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;m.onFire((k,t)=>{fireLast=t;log(/out|Too big/.test(t)&&!/Too big/.test(t)?'ok':'fire','FIRE · '+t)});const l=$('#v3-load');if(l)l.remove();return m;
+  if(!f3Pending)f3Pending=Promise.all([document.fonts.load('700 38px "Atkinson Hyperlegible"'),import('./fire3d.js?v=12')]).then(([,m])=>{
+    m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;m.onPeople((ty,t)=>{pplLast=t;log(ty==='danger'?'fire':ty==='start'?'pre':'ok','PEOPLE · '+t)});m.onFire((k,t)=>{fireLast=t;log(/out|Too big/.test(t)&&!/Too big/.test(t)?'ok':'fire','FIRE · '+t)});const l=$('#v3-load');if(l)l.remove();return m;
   }).catch(e=>{f3Pending=null;const l=$('#v3-load');if(l)l.textContent='3D view could not load ('+((e&&e.message)||e)+'). Check that fire3d.js is uploaded next to index.html and that this browser supports WebGL.';return null});
   return f3Pending;
 }
@@ -1285,6 +1290,7 @@ window.FACP={show3d(){setMode('3d').then(()=>{if(F3)F3.focusPump()})},showPump()
   state(){return {panel:panelState(),view:mode,pointsOn:[...S.on],rulesMatched:[...S.matched],scenario:sc?sc.id||true:null,pump:!!PA}},
   press(k){const f={ack:doAck,silence:doSil,reset:doReset}[k];if(!f)throw new Error('press: ack | silence | reset');f();return panelState()},
   toggle(id){if(!findPoint(id))throw new Error('unknown point '+id);toggle(id);return panelState()},
+  people:{add:(k,n,r)=>ppReady().then(()=>F3.addPeople(k,n||5,r)),wardens:()=>ppReady().then(()=>F3.addWardens()),drill:()=>F3&&F3.drillEvac(),back:()=>F3&&F3.returnPeople(),clear:()=>F3&&F3.clearPeople(),status:()=>F3?F3.peopleStatus():null},
   fire:{start:k=>fireStart(k),out:()=>F3&&F3.putOutFires(),list:()=>F3?F3.fireList():[],extinguish:k=>F3?F3.extinguish(k):false,places:()=>FIRE_MENU.map(x=>x[0])},
   view(m){if(!['2d','3d','pump'].includes(m))throw new Error('view: 2d | 3d | pump');return setMode(m)}};
 setTimeout(pumpLoad,700);
@@ -1355,11 +1361,27 @@ setInterval(()=>{const el=$('#v3-firehud');if(!F3||!view3){el.hidden=true;return
   const l=F3.fireList();el.hidden=!l.length;if(!l.length)return;
   el.innerHTML=l.map(f=>{const pct=Math.round(f.size*100),msg=f.state==='out'?'Out':f.size<.4?'Small. An extinguisher can still work':f.hot?'Large. Evacuate':'Growing';
     return `<b>Fire · ${esc(f.name)}</b><span class="bar2"><i style="width:${pct}%"></i></span><span class="n2">${esc(msg)}${f.sprayed>0&&f.state!=='out'?' · sprinklers on':''}</span>`}).join('')},300);
+/* ---- people: add them, then watch them leave when the alarm sounds ---- */
+const PPL_MENU=[['lobby','Ground lobby'],['l1','L1 office'],['l2','L2 office'],['fm','FM200 room']];
+$('#m-ppl').innerHTML=PPL_MENU.map(([k,n])=>`<button type="button" role="menuitem" data-pp="add:${k}">Add 5 people: ${esc(n)}</button>`).join('')+
+ '<button type="button" role="menuitem" data-pp="visitor">Add 2 visitors in the lobby<small>Slow to react, slower to walk</small></button><button type="button" role="menuitem" data-pp="wardens">Add fire wardens<small>One per floor, they sweep the floor first</small></button><button type="button" role="menuitem" data-pp="drill">Start evacuation drill<small>Everyone leaves now, no fire needed</small></button><button type="button" role="menuitem" data-pp="back">Send everyone back inside</button><button type="button" role="menuitem" data-pp="clear">Remove all people</button>';
+menu($('#v3-ppl'),$('#m-ppl'));
+async function ppReady(){if(!view3)await setMode('3d');if(!F3)await f3Init();return !!F3}
+$('#m-ppl').addEventListener('click',async e=>{const b=e.target.closest('[data-pp]');if(!b)return;const k=b.dataset.pp;if(!await ppReady())return;
+  if(k.startsWith('add:'))F3.addPeople(k.slice(4),5);else if(k==='visitor')F3.addPeople('lobby',2,'visitor');else if(k==='wardens')F3.addWardens();
+  else if(k==='drill'){if(!F3.drillEvac())log('ok','PEOPLE · add some people first')}else if(k==='back')F3.returnPeople();else if(k==='clear')F3.clearPeople()});
+const fmt=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
+setInterval(()=>{const el=$('#v3-pplhud');if(!F3||!view3){el.hidden=true;return}
+  const q=F3.peopleStatus();el.hidden=!q.total;if(!q.total)return;
+  const ins=Object.entries(q.inside).map(([k,n])=>k+' '+n).join(', '),pct=Math.round(q.safe/q.total*100);
+  el.className='v3-ppl'+(q.mode==='done'?' done':'');
+  el.innerHTML=q.mode==='idle'?`<b>People · ${q.total}</b><span class="n2">Inside the building. They leave when the 2nd alarm sounds.</span>`:
+   `<b>People · ${q.safe} of ${q.total} out · ${fmt(q.clock)}</b><span class="bar2"><i style="width:${pct}%"></i></span><span class="n2">${q.mode==='done'?'Roll call complete. Everyone is accounted for.':'Still inside: '+esc(ins||'none')}</span>`},300);
 /* ---- scenarios: step-by-step replay ---- */
 const onD=id=>{if(findPoint(id)&&!S.on.has(id))toggle(id)};
 const camD=(k,id)=>F3&&F3.focusDev(k,id);
 const camV=n=>{if(!F3)return;({overview:()=>F3.resetView(),valve:()=>F3.focusValve(),pump:()=>F3.focusPump(),ctrl:()=>F3.focusControl()})[n]()};
-const rstAll=()=>{if(F3)F3.putOutFires();S.on.clear();S.sil=false;S.ack=false;S.since={};S.hold={};pumpAuto={};if(PA)try{PA.reset()}catch(e){}evaluate();if(F3)F3.resetView()};
+const rstAll=()=>{if(F3){F3.putOutFires();F3.returnPeople()}S.on.clear();S.sil=false;S.ack=false;S.since={};S.hold={};pumpAuto={};if(PA)try{PA.reset()}catch(e){}evaluate();if(F3)F3.resetView()};
 const SCN=[
  {id:'l1',name:'Fire on L1: double knock',sub:'Detector → panel → alarm outputs',steps:[
   {t:0,say:'Everything is normal. Smoke is about to start on level 1.',do:rstAll},
@@ -1405,7 +1427,17 @@ const SCN=[
   {t:3,say:'A fire starts in the FM200 room.',do:()=>{F3.igniteFire('fm');F3.focusFire('fm')}},
   {t:6,after:5,when:()=>S.on.size>0,max:60,say:'The smoke detector sees smoke: 1st alarm.',do:()=>{const id=[...S.on][0];if(id)camD('in',id)}},
   {t:6,after:5,when:()=>S.on.size>1,max:90,say:'The heat detector confirms: cross-zone fire. The 30 second pre-discharge delay starts. Everyone must leave the room now.',do:()=>camD('out','release')},
-  {t:6,after:5,when:()=>!F3.fireList().length||F3.fireList().every(f=>f.state==='out'),max:120,say:'The gas has been released and the fire is out. Nobody may enter until the room is ventilated.',do:()=>camV('overview')}]}
+  {t:6,after:5,when:()=>!F3.fireList().length||F3.fireList().every(f=>f.state==='out'),max:120,say:'The gas has been released and the fire is out. Nobody may enter until the room is ventilated.',do:()=>camV('overview')}]},
+ {id:'evl1',name:'Fire and evacuation',sub:'L1 fire, 14 people, roll call at the assembly point',steps:[
+  {t:0,say:'Fourteen people are in the building: 5 in the lobby, 5 on L1 and 3 on L2, with a fire warden on each floor and a visitor.',do:()=>{rstAll();F3.clearPeople();F3.addPeople('lobby',4);F3.addPeople('l1',5);F3.addPeople('l2',2);F3.addPeople('lobby',1,'visitor');F3.addWardens();F3.resetView()}},
+  {t:4,say:'A fire starts in the L1 office.',do:()=>{F3.igniteFire('l1');F3.focusFire('l1')}},
+  {t:6,after:5,when:()=>S.top>=3,max:120,say:'2nd alarm. The alarm sounds. Wardens react first, occupants within seconds, the visitor last. Everyone uses the stairs, not the lift.',do:()=>camV('overview')},
+  {t:6,after:6,when:()=>F3.peopleStatus().mode==='done',max:150,say:()=>'Roll call: '+pplLast+'. Check who was last, and why.',do:()=>{}}]},
+ {id:'evfm',name:'FM200 room: visitor inside',sub:'Can everyone leave before the gas?',steps:[
+  {t:0,say:'Three people are in the FM200 room: two staff and a visitor who does not know the building.',do:()=>{rstAll();F3.clearPeople();F3.addPeople('fm',2);F3.addPeople('fm',1,'visitor');F3.resetView()}},
+  {t:4,say:'A fire starts in the FM200 room.',do:()=>{F3.igniteFire('fm');F3.focusFire('fm')}},
+  {t:6,after:5,when:()=>S.top>=3,max:120,say:'Cross-zone confirmed. The 30 second countdown starts and everyone must leave the room before the gas is released.',do:()=>camD('out','release')},
+  {t:6,after:5,when:()=>/FM200 room/.test(pplLast)||F3.peopleStatus().mode==='done',max:150,say:()=>'Result: '+pplLast+'.',do:()=>{}}]}
 ];
 $('#m-scn').innerHTML=SCN.map(s=>`<button type="button" role="menuitem" data-sc="${s.id}">${esc(s.name)}<small>${esc(s.sub)}</small></button>`).join('');
 let sc=null;
