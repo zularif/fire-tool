@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fire-tool admin</title>
+<style>
+:root{--bg:#F6F4EF;--ink:#16181D;--mute:#5A5F69;--line:#D9D5CB;--card:#fff;--acc:#D6401F;--ok:#1E7A46;--warn:#9A6200}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;padding:12px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.02em}
+header .sp{flex:1}
+header small{color:#c9ccd3}
+main{max-width:1000px;margin:0 auto;padding:22px 20px 80px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+button,.btn{font:600 14px system-ui,sans-serif;border:1px solid var(--ink);background:var(--card);color:var(--ink);padding:9px 14px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
+button:hover,.btn:hover{background:#eee9df}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.pri:hover{background:#b9351a}
+button:disabled{opacity:.45;cursor:not-allowed}
+.chip{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff}
+.chip.ok{color:var(--ok);border-color:#b8dcc6}.chip.warn{color:var(--warn);border-color:#e8d3a3}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--ink);margin:18px 0 14px}
+.tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:8px 14px}
+.tabs button.on{border-bottom-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:10px}
+.row{display:grid;grid-template-columns:70px minmax(0,1.3fr) minmax(0,1.2fr) 150px;gap:12px;align-items:center;padding:10px 14px}
+.row.head{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600;padding-bottom:4px;background:none;border:0}
+.row.off{background:#f1efe9;color:var(--mute)}
+.row input[type=text]{width:100%;font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+.pts{border-top:1px solid var(--line);background:#faf9f5;padding:4px 0}
+.pts .row{grid-template-columns:70px 130px minmax(0,1fr) 150px;padding:6px 14px 6px 34px}
+.pts code{font-size:12.5px;color:var(--mute)}
+summary{cursor:pointer;color:var(--mute);font-size:13px;padding:6px 14px;list-style:none}
+summary::before{content:"▸ "}details[open] summary::before{content:"▾ "}
+.sw{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:13.5px}
+.sw input{position:absolute;opacity:0}
+.sw i{width:38px;height:22px;border-radius:99px;background:#bdb8ac;position:relative;transition:.15s;flex:none}
+.sw i::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.sw input:checked+i{background:var(--ok)}.sw input:checked+i::after{left:19px}
+.sw input:focus-visible+i{outline:3px solid #7aa7ff}
+.note{color:var(--mute);font-size:13.5px;margin:4px 0 14px}
+.msg{padding:10px 14px;border-radius:8px;margin-bottom:12px;font-weight:600;font-size:14px}
+.msg.err{background:#fde7e3;color:#7a1d12}.msg.ok{background:#e1f3e8;color:#14532d}.msg.info{background:#fff;border:1px solid var(--line)}
+.hist{display:grid;grid-template-columns:70px 1fr 1fr 130px;gap:12px;align-items:center;padding:10px 14px}
+h2{font-size:15px;margin:22px 0 8px}
+@media(max-width:720px){.row,.pts .row,.hist{grid-template-columns:1fr 1fr}.row.head{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>FIRE-TOOL ADMIN</h1><span class="chip" id="who" hidden></span>
+  <span class="sp"></span>
+  <a class="btn" href="/" target="_blank" rel="noopener">View site</a>
+</header>
+<main>
+  <div id="msg"></div>
+  <div id="app"><p class="note">Loading…</p></div>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S=null, cfg=null, dirty=false, tab='inputs', armed='', openSet=new Set();
+
+function say(kind,text){$('#msg').innerHTML=text?'<div class="msg '+kind+'">'+esc(text)+'</div>':''; if(text)window.scrollTo({top:0,behavior:'smooth'})}
+
+async function api(path,body){
+  const opt=body===undefined?{credentials:'same-origin',cache:'no-store'}:{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)};
+  const r=await fetch('/admin/api/'+path,opt);
+  if(!(r.headers.get('content-type')||'').includes('json'))throw Object.assign(new Error('The admin service is not reachable or you are not signed in ('+r.status+').'),{status:r.status});
+  const j=await r.json();
+  if(!r.ok)throw Object.assign(new Error(j.error||('error '+r.status)),{status:r.status,data:j});
+  return j;
+}
+
+const strip=c=>{if(!c)return '';const k=JSON.parse(JSON.stringify(c));delete k.updated;return JSON.stringify(k)};
+const sameAsPub=()=>S&&S.published&&cfg&&strip(cfg)===strip(S.published.config);
+const fmt=t=>t?new Date(t).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'never';
+
+async function load(){
+  try{
+    S=await api('state');
+    cfg=S.draft?JSON.parse(JSON.stringify(S.draft.config)):(S.published?JSON.parse(JSON.stringify(S.published.config)):null);
+    dirty=false;
+    const w=$('#who');w.hidden=false;w.textContent=S.email;w.style.cssText='background:#2b2f38;color:#fff;border-color:#444';
+    paint();
+  }catch(e){
+    $('#app').innerHTML='';
+    say('err',e.status===503?'Storage is not set up yet. Follow the setup steps, then reload this page.':e.message);
+  }
+}
+
+function usedBy(kind,key){
+  if(!cfg)return 0;
+  if(kind==='in')return cfg.rules.filter(r=>r.when.some(w=>(w.groups||[]).includes(key))).length;
+  if(kind==='pt')return cfg.rules.filter(r=>r.when.some(w=>(w.points||[]).includes(key))).length;
+  return cfg.rules.filter(r=>(r.outputs||[]).includes(key)).length;
+}
+const sw=(id,on,label)=>`<label class="sw"><input type="checkbox" data-sw="${esc(id)}" ${on?'checked':''}><i></i><span>${label}</span></label>`;
+
+function paint(){
+  const app=$('#app');
+  if(!cfg){
+    app.innerHTML=`<div class="card" style="padding:22px"><h2 style="margin-top:0">No setup saved yet</h2>
+    <p class="note">Open the editor once. It will create the first draft from the built-in setup, and then this page can manage it.</p>
+    <a class="btn pri" href="/?admin=1">Open the editor</a></div>`;return;
+  }
+  const hiddenIn=cfg.inputs.filter(g=>g.hide).length, hiddenOut=cfg.outputs.filter(o=>o.hide).length;
+  const diff=!sameAsPub();
+  let h=`<div class="bar">
+    <span class="chip ${S.published?'ok':'warn'}">${S.published?'Published '+fmt(S.published.at)+' · v'+S.published.rev:'Nothing published yet'}</span>
+    <span class="chip ${dirty?'warn':(diff?'warn':'ok')}">${dirty?'Unsaved changes':(diff?'Draft is different from published':'Draft = published')}</span>
+    <span class="sp" style="flex:1"></span>
+    <a class="btn" href="/?preview=draft" target="_blank" rel="noopener">Preview as visitor</a>
+    <a class="btn" href="/?admin=1" target="_blank" rel="noopener">Advanced logic editor</a>
+  </div>
+  <div class="bar">
+    <button id="b-save" ${dirty?'':'disabled'}>Save draft</button>
+    <button class="pri" id="b-pub" ${(!dirty&&!diff)?'disabled':''}>${armed==='pub'?'Press again to confirm':'Publish to everyone'}</button>
+    <button id="b-disc" ${S.draft?'':'disabled'}>${armed==='disc'?'Press again to confirm':'Discard draft'}</button>
+  </div>
+  <p class="note">Turn items <b>off</b> to hide them from visitors. They stay saved, so you can turn them back on. Visitors only see changes after you press <b>Publish</b>.</p>
+  <div class="tabs">
+    <button data-tab="inputs" class="${tab==='inputs'?'on':''}">Inputs (${cfg.inputs.length-hiddenIn} shown${hiddenIn?' · '+hiddenIn+' hidden':''})</button>
+    <button data-tab="outputs" class="${tab==='outputs'?'on':''}">Outputs (${cfg.outputs.length-hiddenOut} shown${hiddenOut?' · '+hiddenOut+' hidden':''})</button>
+    <button data-tab="history" class="${tab==='history'?'on':''}">History</button>
+  </div>`;
+  if(tab==='inputs'){
+    h+=`<div class="row head"><span>Show</span><span>Name</span><span>Description</span><span></span></div>`;
+    cfg.inputs.forEach((g,i)=>{
+      const n=usedBy('in',g.key);
+      h+=`<div class="card"><div class="row ${g.hide?'off':''}">
+        ${sw('g:'+i,!g.hide,g.hide?'Hidden':'Shown')}
+        <input type="text" data-f="g:${i}:name" value="${esc(g.name)}" aria-label="Name">
+        <input type="text" data-f="g:${i}:sub" value="${esc(g.sub||'')}" aria-label="Description">
+        <span class="note" style="margin:0">${n} rule${n===1?'':'s'} use it</span></div>`;
+      if((g.points||[]).length){
+        h+=`<details data-g="${i}" ${openSet.has(i)?'open':''}><summary>${g.points.length} device${g.points.length===1?'':'s'}</summary><div class="pts">`;
+        g.points.forEach((p,j)=>{
+          h+=`<div class="row ${(g.hide||p.hide)?'off':''}">${sw('p:'+i+':'+j,!p.hide,p.hide?'Hidden':'Shown')}<code>${esc(p.id)} · ${esc(p.addr||'')}</code><input type="text" data-f="p:${i}:${j}:label" value="${esc(p.label||'')}" aria-label="Label"><span></span></div>`;
+        });
+        h+=`</div></details>`;
+      }
+      h+=`</div>`;
+    });
+  }
+  if(tab==='outputs'){
+    h+=`<div class="row head"><span>Show</span><span>Name</span><span>Description</span><span></span></div>`;
+    cfg.outputs.forEach((o,i)=>{
+      const n=usedBy('out',o.key);
+      h+=`<div class="card"><div class="row ${o.hide?'off':''}">
+        ${sw('o:'+i,!o.hide,o.hide?'Hidden':'Shown')}
+        <input type="text" data-f="o:${i}:name" value="${esc(o.name)}" aria-label="Name">
+        <input type="text" data-f="o:${i}:sub" value="${esc(o.sub||'')}" aria-label="Description">
+        <span class="note" style="margin:0">${n} rule${n===1?'':'s'} use it</span></div></div>`;
+    });
+  }
+  if(tab==='history'){
+    h+=`<p class="note">The last ${S.history.length} published versions. Restore puts one into the draft, then you can preview and publish it.</p>`;
+    if(!S.history.length)h+=`<div class="card" style="padding:14px">Nothing published yet.</div>`;
+    S.history.forEach(v=>{h+=`<div class="card"><div class="hist"><b>v${v.rev}</b><span>${fmt(v.at)}</span><span>${esc(v.by||'')}</span><button data-restore="${v.rev}">${armed==='r'+v.rev?'Press again':'Restore'}</button></div></div>`});
+  }
+  app.innerHTML=h;
+}
+
+document.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.g!==undefined){d.open?openSet.add(+d.dataset.g):openSet.delete(+d.dataset.g)}},true);
+function touch(){dirty=true;armed='';}
+
+document.addEventListener('change',e=>{
+  const t=e.target;if(!cfg||!t.dataset||!t.dataset.sw)return;
+  const a=t.dataset.sw.split(':'),on=t.checked;
+  if(a[0]==='g')cfg.inputs[+a[1]].hide=on?undefined:true;
+  if(a[0]==='p')cfg.inputs[+a[1]].points[+a[2]].hide=on?undefined:true;
+  if(a[0]==='o')cfg.outputs[+a[1]].hide=on?undefined:true;
+  touch();paint();
+});
+document.addEventListener('input',e=>{
+  const t=e.target;if(!cfg||!t.dataset||!t.dataset.f)return;
+  const a=t.dataset.f.split(':');
+  if(a[0]==='g')cfg.inputs[+a[1]][a[2]]=t.value;
+  if(a[0]==='p')cfg.inputs[+a[1]].points[+a[2]][a[3]]=t.value;
+  if(a[0]==='o')cfg.outputs[+a[1]][a[2]]=t.value;
+  if(!dirty){dirty=true;armed='';const s=$('#b-save'),p=$('#b-pub');if(s)s.disabled=false;if(p)p.disabled=false}
+});
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('button');if(!t)return;
+  try{
+    if(t.dataset.tab){tab=t.dataset.tab;armed='';paint();return}
+    if(t.id==='b-save'){await saveDraft();say('ok','Draft saved. Visitors do not see it yet.');return}
+    if(t.id==='b-pub'){
+      if(armed!=='pub'){armed='pub';paint();setTimeout(()=>{if(armed==='pub'){armed='';paint()}},4000);return}
+      armed='';if(dirty)await saveDraft(true);
+      await api('publish',{drev:S.drev});await load();say('ok','Published. Everyone sees the new setup now.');return}
+    if(t.id==='b-disc'){
+      if(armed!=='disc'){armed='disc';paint();setTimeout(()=>{if(armed==='disc'){armed='';paint()}},4000);return}
+      armed='';await api('discard',{});await load();say('ok','Draft discarded. You are back at the published version.');return}
+    if(t.dataset.restore){
+      const k='r'+t.dataset.restore;
+      if(armed!==k){armed=k;paint();setTimeout(()=>{if(armed===k){armed='';paint()}},4000);return}
+      armed='';await api('restore',{rev:+t.dataset.restore});tab='inputs';await load();say('ok','Version '+t.dataset.restore+' is now in the draft. Preview it, then publish.');return}
+  }catch(err){
+    if(err.status===409){say('err','The draft was changed somewhere else (the logic editor?). Reloading the latest draft. Please repeat your change.');await load();return}
+    say('err',err.message);
+  }
+});
+
+async function saveDraft(quiet){
+  const c=JSON.parse(JSON.stringify(cfg));
+  const r=await api('draft',{drev:S.drev,config:c,assets:{},keep:Object.keys(S.draft&&S.draft.assets||S.published&&S.published.assets||{})});
+  S.drev=r.drev;
+  if(!quiet){await load()} else {dirty=false}
+}
+window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+load();
+</script>
+</body>
+</html>

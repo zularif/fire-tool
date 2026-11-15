@@ -606,7 +606,7 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
     <div class="ed-head">
       <h2>Edit devices &amp; cause and effect</h2>
       <div class="ed-actions">
-        <button class="btn pri" id="ed-save">Save for everyone</button>
+        <button class="btn pri" id="ed-save">Keep on this device</button>
         <button class="btn" id="ed-cancel">Cancel</button>
         <button class="btn dan" id="ed-default">Restore default setup</button>
       </div>
@@ -1001,14 +1001,57 @@ function normalise(c){
   if(!c.pumpMig){c.pumpMig=1;if(!c.inputs.some(g=>g.key==='pump'))c.inputs.push(clone(PUMP_GROUP));if(!c.rules.some(r=>r.id==='rp1'))c.rules.push(clone(PUMP_RULE))}
   c.rules.forEach(r=>{r.delays=r.delays||{};r.marks=r.marks||{};r.zone=r.zone||'General';if(r.delay){r.outputs.forEach(o=>r.delays[o]=+r.delay);delete r.delay}r.when.forEach(w=>{w.groups=w.groups||[];w.points=w.points||[]})});return c;
 }
+const ADMIN=/[?&]admin=1(&|$)/.test(location.search), PREVIEW=/[?&]preview=draft(&|$)/.test(location.search);
+const SAVEW=ADMIN?'Save draft':'Keep on this device', DEFW=ADMIN?'Restore default setup':'Back to published setup';
+/* What visitors see: items the admin switched off are removed, and rules are tidied so nothing points at a missing item. */
+function visible(c){
+  if(!c)return c;c=clone(c);
+  const hg=new Set(),hp=new Set(),ho=new Set(),cnt={};
+  c.inputs=(c.inputs||[]).filter(g=>{if(g.hide){hg.add(g.key);(g.points||[]).forEach(p=>hp.add(p.id));return false}return true});
+  c.inputs.forEach(g=>{g.points=(g.points||[]).filter(p=>{if(p.hide){hp.add(p.id);return false}return true});cnt[g.key]=g.points.length});
+  c.outputs=(c.outputs||[]).filter(o=>{if(o.hide){ho.add(o.key);return false}return true});
+  c.rules=(c.rules||[]).filter(r=>{
+    r.when=(r.when||[]).map(w=>({...w,groups:(w.groups||[]).filter(k=>!hg.has(k)),points:(w.points||[]).filter(p=>!hp.has(p))})).filter(w=>w.groups.length||w.points.length);
+    r.when.forEach(w=>{const n=w.groups.reduce((a,k)=>a+(cnt[k]||0),0)+w.points.length;if(w.min&&w.min>n)w.min=Math.max(1,n)});
+    if(!r.when.length)return false;
+    r.outputs=(r.outputs||[]).filter(k=>!ho.has(k));
+    return r.outputs.length>0;
+  });
+  return c;
+}
+function adminPost(path,body){return fetch('/admin/api/'+path,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)})}
+function adminBanner(kind,text){
+  let b=document.getElementById('adm-bar');if(!b){b=document.createElement('div');b.id='adm-bar';b.style.cssText='position:fixed;left:0;right:0;top:0;z-index:9999;padding:8px 14px;font:600 13px system-ui,sans-serif;display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap';document.body.appendChild(b);document.body.style.paddingTop='38px'}
+  b.style.background=kind==='err'?'#7a1d12':'#16181D';b.style.color='#fff';
+  b.innerHTML='';const s=document.createElement('span');s.textContent=text;b.appendChild(s);
+  const a=document.createElement('a');a.href='/admin/';a.textContent='Open admin page';a.style.cssText='color:#ffd7a8';b.appendChild(a);
+}
 async function load(){
   try{
-    const r=await fetch(API,{cache:'no-store'});if(!r.ok)throw new Error(r.status);
-    const j=await r.json();
-    if(j.config){saved=normalise(j.config);Object.assign(ASSETS,j.assets||{});source='shared'}
-    rev=j.rev||0;
+    if(ADMIN||PREVIEW){
+      const r=await fetch('/admin/api/state',{cache:'no-store',credentials:'same-origin'});
+      if(!r.ok||!(r.headers.get('content-type')||'').includes('json'))throw new Error('admin '+r.status);
+      const j=await r.json();const d=j.draft||j.published;rev=j.drev||0;
+      if(d&&d.config){const n=normalise(d.config);saved=ADMIN?n:visible(n);Object.assign(ASSETS,d.assets||{});source='admin'}
+      else if(ADMIN){ /* first time: create the first draft from the built-in setup */
+        saved=normalise(clone(DEFAULT_CONFIG));
+        const r2=await adminPost('draft',{drev:0,config:saved,assets:{},keep:[]});if(r2.ok)rev=(await r2.json()).drev;
+      }
+      adminBanner('ok',ADMIN?'ADMIN MODE · you are editing the DRAFT. Visitors do not see it until you publish.':'PREVIEW · the draft as visitors would see it (nothing published yet).');
+    }else{
+      const r=await fetch(API,{cache:'no-store'});if(!r.ok)throw new Error(r.status);
+      const j=await r.json();rev=j.rev||0;
+      if(j.config){
+        saved=visible(normalise(j.config));Object.assign(ASSETS,j.assets||{});source='shared';
+        /* a visitor's own experiments are kept only on their device, and only for this published version */
+        try{const l=JSON.parse(localStorage.getItem('fa-config')||'null');if(l&&l.config&&l.rev===rev){saved=normalise(l.config);Object.assign(ASSETS,l.assets||{});source='local'}else if(l)localStorage.removeItem('fa-config')}catch(_){}
+      }else{
+        try{const l=JSON.parse(localStorage.getItem('fa-config')||'null');if(l&&l.config){saved=normalise(l.config);Object.assign(ASSETS,l.assets||{});source='local'}}catch(_){}
+      }
+    }
   }catch(e){
-    try{const l=JSON.parse(localStorage.getItem('fa-config')||'null');if(l&&l.config){saved=normalise(l.config);Object.assign(ASSETS,l.assets||{});source='local'}}catch(_){}
+    if(ADMIN||PREVIEW){adminBanner('err','Could not reach the admin service. Sign in on the admin page first, then come back.')}
+    else try{const l=JSON.parse(localStorage.getItem('fa-config')||'null');if(l&&l.config){saved=normalise(l.config);Object.assign(ASSETS,l.assets||{});source='local'}}catch(_){}
   }
   setInfo();build();
 }
@@ -1017,36 +1060,40 @@ async function save(){
   const c=clone(draft);c.updated=new Date().toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
   const used=[...new Set(usedAssets(c))];const fresh={};used.forEach(id=>{if(pending[id])fresh[id]=pending[id]});
   $('#ed-save').disabled=true;msg('warn','Saving…');
-  try{
-    const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({rev,config:c,assets:fresh,keep:used})});
-    if(r.status===409){msg('err','Someone else saved changes while you were editing. Press Cancel to load their version, then make your change again.');$('#ed-save').disabled=false;return}
-    if(!r.ok)throw new Error(await r.text());
-    const j=await r.json();rev=j.rev;source='shared';
-    Object.assign(ASSETS,fresh);pending={};saved=c;draft=null;closeEditor();setInfo();build();
-    log('ok','SETUP SAVED · shared with everyone');
-  }catch(e){
+  if(ADMIN){
     try{
-      const keepA={};used.forEach(id=>{keepA[id]=pending[id]||ASSETS[id]});
-      localStorage.setItem('fa-config',JSON.stringify({config:c,assets:keepA}));
-      Object.assign(ASSETS,fresh);pending={};saved=c;draft=null;source='local';closeEditor();setInfo();build();
-      log('pre','SETUP SAVED ON THIS DEVICE ONLY · shared database not reachable');
-    }catch(_){msg('err','Could not save. The shared database is not reachable and this browser blocks local saving.');$('#ed-save').disabled=false}
+      const r=await adminPost('draft',{drev:rev,config:c,assets:fresh,keep:used});
+      if(r.status===409){msg('err','The draft was changed somewhere else (for example on the admin page). Press Cancel to load the latest draft, then make your change again.');$('#ed-save').disabled=false;return}
+      if(!r.ok||!(r.headers.get('content-type')||'').includes('json'))throw new Error('status '+r.status);
+      const j=await r.json();rev=j.drev;
+      Object.assign(ASSETS,fresh);pending={};saved=c;draft=null;closeEditor();setInfo();build();
+      log('ok','DRAFT SAVED · open the admin page to publish it');
+    }catch(e){msg('err','Could not save the draft ('+e.message+'). Open the admin page, sign in, then try again.');$('#ed-save').disabled=false}
+    return;
   }
+  try{
+    const keepA={};used.forEach(id=>{keepA[id]=pending[id]||ASSETS[id]});
+    localStorage.setItem('fa-config',JSON.stringify({config:c,assets:keepA,rev}));
+    Object.assign(ASSETS,fresh);pending={};saved=c;draft=null;source='local';closeEditor();setInfo();build();
+    log('pre','YOUR CHANGES ARE KEPT ON THIS DEVICE ONLY · other visitors are not affected');
+  }catch(_){msg('err','Could not keep your changes. This browser blocks local saving.');$('#ed-save').disabled=false}
 }
 
 /* ---------- editor ---------- */
 let tab='inputs',dirty=false,buildT=null;
 function msg(cls,t){const m=$('#ed-msg');if(!t){m.hidden=true;return}m.hidden=false;m.className='ed-msg '+cls;m.textContent=t}
-function openEditor(){draft=clone(cfg());pending={};dirty=false;if(typeof WG!=='undefined'){WG.hist=[JSON.stringify(draft)];WG.hp=0;WG.init=false;WG.sel=null}$('#ed').hidden=false;$('#k-edit').hidden=true;$('#ed-save').disabled=false;msg('ok','Changes show in the diagram straight away. Press “Save for everyone” to keep them.');renderEditor();$('#ed').scrollIntoView({behavior:'smooth',block:'start'})}
+function openEditor(){draft=clone(cfg());pending={};dirty=false;if(typeof WG!=='undefined'){WG.hist=[JSON.stringify(draft)];WG.hp=0;WG.init=false;WG.sel=null}$('#ed').hidden=false;$('#k-edit').hidden=true;$('#ed-save').disabled=false;msg('ok',ADMIN?'Changes show in the diagram straight away. Press “Save draft” to keep them. Visitors only see them after you publish.':'Try anything. Changes show straight away. Press “Keep on this device” to keep them. Other visitors never see your changes.');renderEditor();$('#ed').scrollIntoView({behavior:'smooth',block:'start'})}
 function closeEditor(){$('#ed').hidden=true;$('#k-edit').hidden=false;dirty=false;msg()}
 function changed(rebuildEditor){if(typeof wgHist==='function')wgHist();dirty=true;clearTimeout(buildT);buildT=setTimeout(build,150);if(rebuildEditor)renderEditor()}
 $('#k-edit').addEventListener('click',openEditor);
 $('#ed-cancel').addEventListener('click',()=>{draft=null;pending={};closeEditor();load()});
-$('#ed-save').addEventListener('click',save);
+$('#ed-save').addEventListener('click',save);$('#ed-save').textContent=SAVEW;$('#ed-default').textContent=DEFW;
 let defArm=false;
 $('#ed-default').addEventListener('click',()=>{
-  if(!defArm){defArm=true;$('#ed-default').textContent='Press again to confirm';setTimeout(()=>{defArm=false;$('#ed-default').textContent='Restore default setup'},4000);return}
-  defArm=false;$('#ed-default').textContent='Restore default setup';draft=normalise(clone(DEFAULT_CONFIG));changed(true);msg('warn','Default setup loaded. Press “Save for everyone” to apply it for all users.');
+  if(!defArm){defArm=true;$('#ed-default').textContent='Press again to confirm';setTimeout(()=>{defArm=false;$('#ed-default').textContent=DEFW},4000);return}
+  defArm=false;$('#ed-default').textContent=DEFW;
+  if(!ADMIN){try{localStorage.removeItem('fa-config')}catch(_){}draft=null;pending={};closeEditor();load();return}
+  draft=normalise(clone(DEFAULT_CONFIG));changed(true);msg('warn','Default setup loaded. Press “Save draft” to keep it (visitors see it after you publish).');
 });
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===b));renderEditor()}));
@@ -1235,13 +1282,13 @@ $('#file-img').addEventListener('change',async e=>{
     const s=Math.min(1,320/im.width,180/im.height);const c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
     c.getContext('2d').drawImage(im,0,0,c.width,c.height);
     const data=c.toDataURL('image/png');if(data.length>600000){msg('err','That photo is too detailed to store. Try a smaller PNG.');return}
-    const id=uid('up:img');pending[id]=data;draft[fileTarget.kind][fileTarget.i].img=id;changed(true);msg('ok','Photo added. Press “Save for everyone” to keep it.');
+    const id=uid('up:img');pending[id]=data;draft[fileTarget.kind][fileTarget.i].img=id;changed(true);msg('ok','Photo added. Press “'+SAVEW+'” to keep it.');
   }catch(_){msg('err','Could not read that image. Use a PNG, JPG or WebP file.')}
 });
 $('#file-aud').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f||!fileTarget)return;
   if(f.size>1000000){msg('err','That audio file is over 1 MB. Use a shorter clip or an MP3.');return}
-  try{const data=await readURL(f);const id=uid('up:aud');pending[id]=data;draft.voices[fileTarget.i].asset=id;changed(true);msg('ok','Voice file added. Press “Save for everyone” to keep it.')}
+  try{const data=await readURL(f);const id=uid('up:aud');pending[id]=data;draft.voices[fileTarget.i].asset=id;changed(true);msg('ok','Voice file added. Press “'+SAVEW+'” to keep it.')}
   catch(_){msg('err','Could not read that audio file.')}
 });
 
