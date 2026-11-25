@@ -5,9 +5,13 @@ import {
   AdditiveBlending, BoxGeometry, CapsuleGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, CylinderGeometry, DoubleSide,
   EdgesGeometry, GridHelper, Group, HemisphereLight, DirectionalLight, LineBasicMaterial, LineSegments, MathUtils, Mesh,
   MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera, Points, PointsMaterial, Raycaster, RepeatWrapping, Scene, ShaderMaterial,
-  CircleGeometry, SphereGeometry, Sprite, SpriteMaterial, TorusGeometry, Vector2, Vector3, WebGLRenderer
+  CircleGeometry, SphereGeometry, Sprite, SpriteMaterial, TorusGeometry, Vector2, Vector3, WebGLRenderer, Fog, InstancedMesh, Object3D, Line
 } from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
+import {EffectComposer} from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/examples/jsm/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import {OutputPass} from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 const FH = 4, W = 36, D = 22;                       // floor height, building width (x), depth (z) in metres
 const PCOL = [0x2c8a49, 0x1e5fc4, 0xc1121f];
@@ -21,8 +25,10 @@ let running = false, raf = 0, lastT = 0, T = 0;
 const floors = [], dynG = [], walls = [], IN = [], OUT = [], pickables = [];
 let L = {on: new Set(), outState: {}, inState: {}, sil: false, rank: 0, leds: {}, scr: {h: 'SYSTEM NORMAL', c: '', l: []}};
 let cfgRef = null, floorCap = 3, showWalls = true, tween = null, dark = false, facp = null, lift = null, gasBox = null, hoverDev = null;
-let pinTip = 0;
+let pinTip = 0, composer = null, bloom = null, coG = null;
 const M = {};
+/* layer switches (System layers panel): pipes are matched by material, devices / labels by userData.layer */
+const LAYER = {water: true, sprinkler: true, fm200: true, fas: true, notif: true, labels: true};
 
 /* ---------------------------------------------------------------- helpers */
 const rad = () => {
@@ -52,9 +58,9 @@ function halo(size) {
 function label(text, size = 1, parent, x = 0, y = 0, z = 0) {
   const c = document.createElement('canvas'); c.width = 320; c.height = 80;
   const g = c.getContext('2d'); let fs = 38; g.font = `700 ${fs}px "Atkinson Hyperlegible",Arial,sans-serif`; const tw = g.measureText(text).width; if (tw > 290) { fs = Math.floor(fs * 290 / tw); g.font = `700 ${fs}px "Atkinson Hyperlegible",Arial,sans-serif`; } g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.lineWidth = 7; g.strokeStyle = 'rgba(10,14,20,.75)'; g.strokeText(text, 160, 42); g.fillStyle = '#fff'; g.fillText(text, 160, 42);
-  const s = new Sprite(new SpriteMaterial({map: new CanvasTexture(c), transparent: true, depthTest: false, depthWrite: false, opacity: .9}));
-  s.scale.set(size * 4, size, 1); s.position.set(x, y, z); s.renderOrder = 15; if (parent) parent.add(s); return s;
+  g.lineWidth = 8; g.strokeStyle = 'rgba(4,10,22,.85)'; g.strokeText(text, 160, 42); g.fillStyle = '#e9f3ff'; g.fillText(text, 160, 42);
+  const s = new Sprite(new SpriteMaterial({map: new CanvasTexture(c), transparent: true, depthTest: false, depthWrite: false, opacity: .92}));
+  s.scale.set(size * 4, size, 1); s.position.set(x, y, z); s.renderOrder = 15; s.userData.layer = 'labels'; if (parent) parent.add(s); return s;
 }
 function liveLabel(size, parent, x, y, z) {
   const c = document.createElement('canvas'); c.width = 320; c.height = 80; const tex = new CanvasTexture(c);
@@ -63,31 +69,60 @@ function liveLabel(size, parent, x, y, z) {
   sp.userData.draw = (t, col = '#fff') => { const g = c.getContext('2d'); g.clearRect(0, 0, 320, 80); g.font = '700 38px "Atkinson Hyperlegible",Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = 'rgba(10,14,20,.75)'; g.strokeText(t, 160, 42); g.fillStyle = col; g.fillText(t, 160, 42); tex.needsUpdate = true; };
   return sp;
 }
+/* callout: a pill label floating above a component, joined to it by a thin leader line (digital-twin style) */
+function pillTex(text, col, icon) {
+  const c = document.createElement('canvas'); c.width = 640; c.height = 112; const g = c.getContext('2d');
+  let fs = 42; g.font = `700 ${fs}px "Atkinson Hyperlegible",Arial,sans-serif`; let tw = g.measureText(text).width; const max = icon ? 520 : 580;
+  if (tw > max) { fs = Math.floor(fs * max / tw); g.font = `700 ${fs}px "Atkinson Hyperlegible",Arial,sans-serif`; tw = g.measureText(text).width; }
+  const w = Math.min(632, tw + (icon ? 104 : 64)), x0 = (640 - w) / 2;
+  g.fillStyle = 'rgba(7,15,30,.9)'; g.strokeStyle = col; g.lineWidth = 4; g.beginPath(); g.roundRect(x0, 6, w, 100, 18); g.fill(); g.stroke();
+  if (icon) { g.fillStyle = icon; g.beginPath(); g.arc(x0 + 46, 56, 17, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 3; g.stroke(); }
+  g.fillStyle = '#ffffff'; g.textBaseline = 'middle'; g.textAlign = 'left'; g.fillText(text, x0 + (icon ? 80 : 32), 58);
+  return new CanvasTexture(c);
+}
+function callout(text, parent, a, b, o = {}) {
+  const col = o.col || '#7fd8ff', size = (o.size || 1) * 1.35, grp = new Group(); grp.userData.layer = 'labels'; parent.add(grp);
+  const A = new Vector3(...a), B = new Vector3(...b);
+  const sp = new Sprite(new SpriteMaterial({map: pillTex(text, col, o.icon), transparent: true, depthTest: false, depthWrite: false}));
+  sp.scale.set(size * 640 / 112, size, 1); sp.position.copy(B); sp.renderOrder = 17; sp.center.set(.5, 0); grp.add(sp);
+  const ln = new Line(new BufferGeometry().setFromPoints([A, B]), new LineBasicMaterial({color: col, transparent: true, opacity: .8, depthTest: false})); ln.renderOrder = 16; grp.add(ln);
+  const dt = new Sprite(new SpriteMaterial({map: DOT, color: col, transparent: true, depthTest: false, depthWrite: false})); dt.scale.setScalar(.45 * size); dt.position.copy(A); dt.renderOrder = 17; grp.add(dt);
+  return grp;
+}
+function badge(text, parent, x, y, z, size = 2) {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  g.fillStyle = 'rgba(9,20,40,.92)'; g.strokeStyle = '#7fd8ff'; g.lineWidth = 6; g.beginPath(); g.roundRect(8, 8, 112, 112, 20); g.fill(); g.stroke();
+  g.fillStyle = '#fff'; g.font = `700 ${text.length > 2 ? 34 : 54}px "Atkinson Hyperlegible",Arial,sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 64, 68);
+  const s = new Sprite(new SpriteMaterial({map: new CanvasTexture(c), transparent: true, depthTest: false, depthWrite: false})); s.scale.setScalar(size); s.position.set(x, y, z); s.renderOrder = 15; s.userData.layer = 'labels'; parent.add(s); return s;
+}
+function bgTex() {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#060c18'); gr.addColorStop(.55, '#0c1a30'); gr.addColorStop(1, '#10223b'); g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  return new CanvasTexture(c);
+}
 const lerp = MathUtils.lerp, clamp = MathUtils.clamp;
 const approach = (v, t, r, dt) => v + clamp(t - v, -r * dt, r * dt);
 
 function makeMats() {
   HALO = rad(); DOT = rad();
-  M.slab = std(0xb8c2cc, {roughness: .9, transparent: true, opacity: .3, depthWrite: false});
-  M.glass = std(0x7aa6d6, {transparent: true, opacity: .07, depthWrite: false, side: DoubleSide});
-  M.wall = std(0x9db4cc, {transparent: true, opacity: .2, depthWrite: false, side: DoubleSide});
-  M.core = std(0x8fa3b8, {transparent: true, opacity: .26, depthWrite: false, side: DoubleSide});
-  M.line = new LineBasicMaterial({color: 0x6b7a89, transparent: true, opacity: .6});
+  M.slab = std(0x24364f, {roughness: .75, metalness: .15, transparent: true, opacity: .62, depthWrite: false});
+  M.glass = std(0x5fb4ff, {transparent: true, opacity: .07, depthWrite: false, side: DoubleSide, roughness: .6, metalness: .05});
+  M.wall = std(0x6c9cd0, {transparent: true, opacity: .13, depthWrite: false, side: DoubleSide, roughness: .7});
+  M.core = std(0x5a7fac, {transparent: true, opacity: .22, depthWrite: false, side: DoubleSide});
+  M.line = new LineBasicMaterial({color: 0x7fd8ff, transparent: true, opacity: .5});
+  M.lamp = new MeshBasicMaterial({color: 0xe6f3ff});
+  M.pipeFM = std(0x2f7dff, {metalness: .3, roughness: .35, emissive: 0x1a5cff, emissiveIntensity: .45});
   M.red = std(0xd32f2f); M.white = std(0xf1f3f5); M.grey = std(0x8a949e); M.dgrey = std(0x4b5560); M.gold = std(0xd9a21b, {metalness: .5});
-  M.pipe = std(0xaab3bb, {metalness: .45, roughness: .45}); M.pipeD = std(0x7a1717, {metalness: .3, roughness: .5}); M.pipeW = std(0xe5392f, {metalness: .2, roughness: .5});
-  M.conc = std(0xaeb6bd, {roughness: .95}); M.black = std(0x1d2126, {roughness: .6}); M.red2 = std(0xa82020); M.blue2 = std(0x1f5fb0);
+  M.pipe = std(0xaab3bb, {metalness: .45, roughness: .45}); M.pipeD = std(0xb01c1c, {metalness: .3, roughness: .45}); M.pipeW = std(0xff3b2f, {metalness: .2, roughness: .4, emissive: 0xff2414, emissiveIntensity: .6});
+  M.conc = std(0x223246, {roughness: .7, metalness: .2}); M.black = std(0x1d2126, {roughness: .6}); M.red2 = std(0xa82020); M.blue2 = std(0x1f5fb0);
   M.pipeP = std(0xaab3bb, {metalness: .45, roughness: .45}); M.tankShell = std(0x9fc3e6, {transparent: true, opacity: .2, depthWrite: false, side: DoubleSide}); M.water = std(0x2f8fd8, {transparent: true, opacity: .75, depthWrite: false, roughness: .2});
   M.crf = std(0x3f6a94, {transparent: true, opacity: .32, depthWrite: false}); M.wood = std(0x8a6b45, {roughness: .7});
   M.orange = std(0xf08a24); M.yellow = std(0xf6c026); M.blue = std(0x2b6cc4); M.green = std(0x2e9d4f);
 }
 function applyTheme() {
-  const cs = getComputedStyle(host), g = n => cs.getPropertyValue(n).trim();
-  const bg = new Color(g('--surface-2') || '#f4f6f8'), hsl = {}; bg.getHSL(hsl);
-  dark = hsl.l < .4;
-  M.slab.color.set(dark ? 0x3a434d : 0xb8c2cc); M.conc.color.set(dark ? 0x3d464f : 0xaeb6bd);
-  M.line.color.set(dark ? 0x9fb3c8 : 0x5f6f80); M.line.opacity = dark ? .55 : .6;
-  M.glass.color.set(dark ? 0x5c8cc0 : 0x7aa6d6); M.wall.color.set(dark ? 0x6d88a6 : 0x9db4cc); M.core.color.set(dark ? 0x5f7690 : 0x8fa3b8);
-  scene.userData.hemi.intensity = dark ? 1.05 : 1.25; scene.userData.grid.material.color.set(dark ? 0x37424d : 0xc3ccd5);
+  /* the 3D stage always uses the dark digital-twin look, whatever the page theme */
+  dark = true;
+  scene.userData.hemi.intensity = 1.15;
 }
 
 
@@ -168,11 +203,19 @@ function buildBuilding() {
   
   // roof parapet
   const par = box(W + .6, .5, D + .6, M.slab); par.position.y = .25; par.scale.set(1, 1, 1); floors[3].add(par); par.visible = false;
-  const gr = new GridHelper(70, 35, 0x8a949e, 0xc3ccd5); gr.position.y = -.32; gr.material.transparent = true; gr.material.opacity = .5; scene.add(gr); scene.userData.grid = gr;
+  const gnd = new Mesh(new CircleGeometry(420, 64), std(0x0a1628, {roughness: .32, metalness: .6})); gnd.rotation.x = -Math.PI / 2; gnd.position.y = -.34; scene.add(gnd);
+  const gr = new GridHelper(140, 70, 0x2a6fa8, 0x16304e); gr.position.y = -.32; gr.material.transparent = true; gr.material.opacity = .55; scene.add(gr); scene.userData.grid = gr;
+  // ceiling light panels on each occupied floor (glow through the glass)
+  const lt = new Object3D();
+  for (let i = 0; i < 3; i++) {
+    const xs = [-15, -10, -5, 0, 5, 10, 15], zs = [-8, -3.5, 1, 5.5, 9.5], im = new InstancedMesh(new BoxGeometry(1.3, .05, .32), M.lamp, xs.length * zs.length); let n = 0;
+    xs.forEach(x => zs.forEach(z => { lt.position.set(x, FH - .14, z); lt.updateMatrix(); im.setMatrixAt(n++, lt.matrix); }));
+    floors[i].add(im);
+  }
   // room / floor labels
   label('FM200 ROOM', 1.5, floors[0], 12, .35, -7);
   label('LOBBY', 1.5, floors[0], -11, .35, 5); buildControlRoom(); label('STAIR', 1.3, floors[0], -2, .35, -8.6); label('LIFT', 1.3, floors[0], 3.5, .35, -8);
-  [['G', 0], ['L1', 1], ['L2', 2], ['ROOF', 3]].forEach(([t, i]) => label(t, 2.2, floors[i], -21, 1, 11.4));
+  [['G', 0], ['L1', 1], ['L2', 2], ['RF', 3]].forEach(([t, i]) => badge(t, floors[i], -21.5, 1.6, 11.6, 2.1));
 }
 
 /* ---------------------------------------------------------------- FACP + signal lamps */
@@ -256,6 +299,7 @@ function buildInputs(C) {
     if (style === 'valve') pk.position.set(-.58, -1.12, -.77);
     g.add(pk);
     if (style === 'flow') { const pk2 = new Mesh(new SphereGeometry(1.15, 10, 8), pm); pk2.position.set(1.73, -1.79, 0); g.add(pk2); pk2.userData.dev = null; extraPk.push(pk2); }
+    g.userData.layer = 'fas';
     const dev = {kind: 'in', id: p.id, key: grp.key, style, led, h, g, acc: 0, wpos: new Vector3(), on: false};
     pk.userData.dev = dev; pickables.push(pk); IN.push(dev);
     while (extraPk.length) { const e = extraPk.pop(); e.userData.dev = dev; pickables.push(e); }
@@ -356,11 +400,16 @@ function mkOut(o, C) {
     const g = new Group();
     [0, 1].forEach(i => { const c = cyl(.34, 1.7, M.red, 18); c.position.set(i * .9, .85, 0); g.add(c); const v = cyl(.1, .22, M.gold, 10); v.position.set(i * .9, 1.8, 0); g.add(v); });
     const mf = cyl(.06, .9, M.gold, 8); mf.rotation.z = Math.PI / 2; mf.position.set(.45, 2, 0); g.add(mf);
-    const h = halo(3); h.position.set(.45, 1, 0); g.add(h); put(g, 10, 0, -9.7); label('FM200', .5, g, .45, 2.6, 0);
+    const h = halo(3); h.position.set(.45, 1, 0); g.add(h); put(g, 10, 0, -9.7);
+    run(g, [[.45, 2, 0], [.45, 3.55, 0], [.45, 3.55, 3.0], [5.0, 3.55, 3.0]], .07, M.pipeFM); run(g, [[2.6, 3.55, .7], [2.6, 3.55, 5.4]], .06, M.pipeFM);
+    const NZ = [[2.6, .7], [2.6, 5.4], [5.0, 3.0], [.45, 3.0]];
+    NZ.forEach(([x, z]) => { const n = cyl(.08, .16, M.gold, 10); n.position.set(x, 3.42, z); g.add(n); });
+    callout('FM200 SYSTEM (HFC-227ea)', g, [.45, 1.9, 0], [-.6, 6.4, 1.2], {size: .85, col: '#5c9dff'});
     if (!gasBox) { gasBox = box(7.7, 3.7, 7.7, new MeshBasicMaterial({color: 0x9fe8ff, transparent: true, opacity: 0, depthWrite: false})); gasBox.position.set(12, 1.85, -7); floors[0].add(gasBox); }
     let acc = 0;
     const d = mk((dt) => { const s = sig(); h.material.opacity = s.on ? .45 : 0; h.material.color.setHex(0x9fe8ff); gasBox.material.opacity = approach(gasBox.material.opacity, s.on ? .13 : 0, .05, dt);
-      if (s.on) { acc += dt * 45; while (acc >= 1) { acc--; emit('gas', 8.6 + Math.random() * 6.8, .3 + Math.random() * 3.2, -10.4 + Math.random() * 6.8); } } });
+      M.pipeFM.emissiveIntensity = s.on ? .9 + .6 * Math.sin(T * 10) : .45;
+      if (s.on) { acc += dt * 45; while (acc >= 1) { acc--; emit('gas', 8.6 + Math.random() * 6.8, .3 + Math.random() * 3.2, -10.4 + Math.random() * 6.8); const nz = NZ[(Math.random() * 4) | 0]; emit('gas', 10 + nz[0], 3.2, -9.7 + nz[1]); } } });
     addPick(g, d, 1.5);
   } else if (type === 'lamp') {
     const c = document.createElement('canvas'); c.width = 256; c.height = 96; const g2 = c.getContext('2d');
@@ -384,7 +433,8 @@ function mkOut(o, C) {
     const d = mk(() => { const s = sig(); l.material.emissive.setHex(s.on ? s.col : 0); l.material.emissiveIntensity = s.on ? 2.2 : 0; h.material.opacity = s.on ? .4 : 0; h.material.color.setHex(s.col); });
     addPick(g, d, 1);
   }
-  devs.forEach(d => { d.name = o.name; });
+  const ly = type === 'release' ? 'fm200' : ['bell', 'speaker', 'strobe', 'lamp'].includes(type) ? 'notif' : null;
+  devs.forEach(d => { d.name = o.name; if (ly && d.g && !d.g.userData.layer) d.g.userData.layer = ly; });
 }
 
 /* ---------------------------------------------------------------- particles */
@@ -436,7 +486,7 @@ function tickParticles(dt) {
 
 /* ---------------------------------------------------------------- build / rebuild from config */
 /* ---------------------------------------------------------------- outdoor pre-action valve station + sprinkler network */
-const HEADS = [], DRY = new Color(0x7a1717), WET = new Color(0x4fa0ff), UPV = new Vector3(0, 1, 0);
+const HEADS = [], DRY = new Color(0xb01c1c), WET = new Color(0x4fa0ff), UPV = new Vector3(0, 1, 0);
 let stn = null, wet = 0, airF = .6;
 function pipe(par, a, b, r, m) {
   const A = new Vector3(a[0], a[1], a[2]), B = new Vector3(b[0], b[1], b[2]), len = A.distanceTo(B); if (len < 1e-4) return;
@@ -537,7 +587,7 @@ function buildStation() {
   add(ax(cyl(.28, .3, M.dgrey, 20)), -5.5, YC, 0);
   run(st, [[0, YC, 0], [-7, YC, 0]], .14, D);
   label('TO PRE-ACTION SPRINKLERS', .65, st, -3.2, YC + 1.0, 0);
-  label('PRE-ACTION VALVE', .95, st, 1.3, 4.6, 0); label('OUTSIDE BUILDING', .6, st, 1.3, 4.05, 0);
+  callout('PRE-ACTION VALVE', st, [.3, 2.6, 0], [2.6, 6.2, 1.6], {size: .95}); label('OUTSIDE BUILDING', .6, st, 1.3, 4.05, 0);
   // wet-pipe system (ground floor): its own alarm check valve outside, red pipework, flow switch FS-01
   const W = M.pipeW;
   run(st, [[4.0, .4, 0], [4.0, .4, ZW], [0, .4, ZW], [0, 1.65, ZW]], .2, M.pipeP);
@@ -555,7 +605,7 @@ function buildStation() {
   run(st, [[.2, 2.0, ZW], [.2, 2.0, ZW + .5], [.9, 2.0, ZW + .5]], .04, W); add(yg.g, .95, 2.0, ZW + .5);
   sg.piv.rotation.x = yg.piv.rotation.x = (135 - .72 * 270) * Math.PI / 180;
   add(ax(cyl(.28, .3, M.dgrey, 20)), -5.5, YC, ZW); run(st, [[0, YC, ZW], [-7, YC, ZW]], .14, W);
-  label('TO WET SPRINKLERS', .55, st, -3.2, YC + 1.0, ZW); label('WET ALARM VALVE', .8, st, 1.0, 4.0, ZW);
+  label('TO WET SPRINKLERS', .55, st, -3.2, YC + 1.0, ZW); callout('WET ALARM VALVE', st, [.3, 1.9, ZW], [1.6, 6.6, ZW - 1.6], {size: .95});
   for (let fi = 0; fi < 3; fi++) {
     const y = fi * FH + YC, wetSys = fi === 0, MM = wetSys ? W : D, zm = wetSys ? SZ + ZW : SZ;
     const eP = sph(.16, D); eP.position.set(RX, YC, SZ); dynG[fi].add(eP);
@@ -568,7 +618,7 @@ function buildStation() {
       runF(fi, [[x, y, zs], [x, y, zEnd]], .07, MM);
       hz.forEach(z => {
         if (z < zEnd - .01) return;
-        const hd = new Group(); hd.position.set(x, YC, z); dynG[fi].add(hd);
+        const hd = new Group(); hd.position.set(x, YC, z); hd.userData.layer = 'sprinkler'; dynG[fi].add(hd);
         const dp = cyl(.025, .12, M.gold, 8); dp.position.y = -.06; hd.add(dp);
         const bulb = sph(.032, M.red); bulb.position.y = -.14; hd.add(bulb);
         const df = cyl(.09, .012, M.gold, 12); df.position.y = -.2; hd.add(df);
@@ -584,12 +634,12 @@ function buildStation() {
   const hb = add(box(WX1 - WX0, HH, WZ1 - WZ0, M.glass), PXC, HH / 2, 0); hb.userData.pump = 1; walls.push(hb);
   const hl = outline(hb, st); hl.userData.pump = 1; walls.push(hl);
   [[WX1 - WX0, .08, PXC, WZ0], [WX1 - WX0, .08, PXC, WZ1], [.08, WZ1 - WZ0, WX0, 0], [.08, WZ1 - WZ0, WX1, 0]].forEach(([w, d, x, z]) => { const m = add(box(w, HH, d, M.wall), x, HH / 2, z); m.userData.pump = 1; walls.push(m); });
-  label('FIRE PUMP ROOM', .8, st, PXC, HH + .75, WZ1 + .2);
+  callout('FIRE PUMP SET · JOCKEY / DUTY / DIESEL', st, [13.4, 1.6, 3.4], [13.8, 5.0, 6.4], {size: .85});
   const cap = (x, y, z, r) => add(sph(r, M.pipeP), x, y, z);
   run(st, [[9.6, .95, -3.9], [9.6, .95, 3.9]], .2, M.pipeP); cap(9.6, .95, -3.9, .2); cap(9.6, .95, 3.9, .2);
   run(st, [[17.4, .25, -7.35], [17.4, .25, 3.9]], .22, M.pipeP); cap(17.4, .25, 3.9, .22);
   const fl = add(cyl(.34, .08, M.dgrey, 20), 17.4, .25, -7.4); fl.rotation.x = Math.PI / 2;
-  label('SUCTION (FROM TANK)', .42, st, 17.4, 1.0, -6.2); label('DISCHARGE HEADER', .42, st, 9.6, 2.5, -2.4);
+  label('SUCTION (FROM TANK)', .42, st, 17.4, 1.0, -6.2); callout('MAIN FIRE PUMP HEADER', st, [9.6, 1.1, -2.6], [8.6, 5.4, -3.4], {size: .85});
   const dgg = mkGauge('BAR'); dgg.g.scale.setScalar(1.7); const dgs = dgg.g; add(dgs, 9.85, 1.9, 1.1);
   run(st, [[9.6, .95, 1.1], [9.6, 1.7, 1.1]], .05, M.pipeP);
   const pk = {pumps: [], cab: [], lastPct: -1};
@@ -652,7 +702,7 @@ function buildStation() {
   for (let k = 0; k <= 4; k++) add(box(.22, .03, .03, M.black), lx + .12, .25 + k * (th - .5) / 4, lz);
   [-.2, .2].forEach(dx => add(cyl(.025, th, M.grey, 6), tx + dx - .9, th / 2, tz + Math.sqrt(tr * tr - (dx - .9) * (dx - .9)) + .04));
   for (let k = 0; k < 12; k++) add(box(.4, .03, .03, M.grey), tx - .9, .3 + k * .36, tz + Math.sqrt(tr * tr - .81) + .04);
-  label('FIRE WATER TANK', .75, st, tx, th + 1.5, tz);
+  callout('FIRE WATER TANK', st, [tx, th, tz], [tx, th + 1.8, tz], {size: .9, col: '#5cb8ff'});
   const tl = liveLabel(.6, st, tx, th + .85, tz); tl.userData.draw('100%'); pk.tl = tl; pk.water = water; pk.lvl = lvl;
   addPk(2.9, tx, th / 2, tz, {kind: 'tank', html: () => tankTip()});
   stn = {airN: ag.piv, watN: wg.piv, supN: sg.piv, sysN: yg.piv, dgN: dgg.piv, fw, rh, pk};
@@ -661,7 +711,7 @@ function stationFrame(dt) {
   if (!stn) return;
   const rel = !!L.release, pa = IN.some(d => d.style === 'valve' && d.on), flow = IN.some(d => d.style === 'flow' && d.on);
   wet = approach(wet, rel ? 1 : 0, .4, dt);
-  M.pipeD.color.copy(DRY).lerp(WET, wet); M.pipeD.emissive.setHex(0x1565ff); M.pipeD.emissiveIntensity = .5 * wet;
+  M.pipeD.color.copy(DRY).lerp(WET, wet); M.pipeD.emissive.setHex(0xd01a10).lerp(WET, wet); M.pipeD.emissiveIntensity = .45 + .2 * wet;
   airF = approach(airF, rel ? .72 : pa ? .04 : .6, .35, dt);
   stn.airN.rotation.x = (135 - airF * 270) * Math.PI / 180;
   pumpFrame(dt);
@@ -902,7 +952,22 @@ function rebuild(C) {
   scene.children.filter(o => o.userData.lift).forEach(o => scene.remove(o));
   buildPanel_attach(); buildInputs(C); C.outputs.forEach(o => mkOut(o, C)); buildStation();
   if (lift) lift.car.userData.lift = 1;
-  scene.updateMatrixWorld(true); IN.forEach(d => d.g.getWorldPosition(d.wpos)); OUT.forEach(d => { if (d.g) { d.wpos = new Vector3(); d.g.getWorldPosition(d.wpos); } }); cfgRef = C; applyFloors(); fxReset();
+  scene.updateMatrixWorld(true); IN.forEach(d => d.g.getWorldPosition(d.wpos)); OUT.forEach(d => { if (d.g) { d.wpos = new Vector3(); d.g.getWorldPosition(d.wpos); } }); cfgRef = C; applyFloors(); fxReset(); buildCallouts(); applyLayers();
+}
+function buildCallouts() {
+  if (coG) scene.remove(coG); coG = new Group(); coG.userData.layer = 'labels'; scene.add(coG);
+  const top = 3 * FH + 3.2, pre = HEADS.find(h => h.sys === 'pre' && h.fi === 2 && h.p.x === 0) || HEADS.find(h => h.sys === 'pre');
+  const wh = HEADS.find(h => h.sys === 'wet' && h.p.x === 11) || HEADS.find(h => h.sys === 'wet');
+  const sm = IN.filter(d => d.style === 'smoke').sort((a, b) => b.wpos.y - a.wpos.y)[0];
+  if (pre) callout('Sprinkler (Pre-action)', coG, pre.p.toArray(), [pre.p.x - 9, top, pre.p.z - 2], {icon: '#2f9bff'});
+  if (sm) callout('Smoke Detector', coG, sm.wpos.toArray(), [sm.wpos.x + 1, top + .4, sm.wpos.z - 1], {icon: '#f2f4f6'});
+  if (wh) callout('Sprinkler (Wet)', coG, wh.p.toArray(), [wh.p.x + 3, top, wh.p.z - 3], {icon: '#ff3b30'});
+}
+function applyLayers() {
+  scene.traverse(o => {
+    const ly = o.userData.layer || (o.isMesh ? (o.material === M.pipeW || o.material === M.pipeD ? 'sprinkler' : o.material === M.pipeP || o.material === M.water || o.material === M.tankShell ? 'water' : o.material === M.pipeFM ? 'fm200' : null) : null);
+    if (ly) o.visible = LAYER[ly] !== false;
+  });
 }
 function buildPanel_attach() { buildPanel(); dynG[0].add(facp.g); }
 
@@ -984,12 +1049,13 @@ function applyFloors() {
 function loop(t) {
   raf = requestAnimationFrame(loop); const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t; T += dt;
   if (tween) { tween.u = Math.min(1, tween.u + dt / .9); const e = tween.u * tween.u * (3 - 2 * tween.u); controls.target.lerpVectors(tween.t0, tween.t1, e); camera.position.lerpVectors(tween.p0, tween.p1, e); if (tween.u >= 1) tween = null; }
-  frame(dt); controls.update(); renderer.render(scene, camera);
+  frame(dt); controls.update(); composer.render();
   if (pinTip && T > pinTip) { pinTip = 0; tipEl.style.opacity = 0; }
 }
 function resize() {
   const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h);
   pts.material.uniforms.scale.value = h * renderer.getPixelRatio() / (2 * Math.tan(camera.fov * Math.PI / 360));
 }
 
@@ -1034,8 +1100,12 @@ export function init(el, a) {
   renderer = new WebGLRenderer({antialias: true, alpha: true, powerPreference: 'high-performance'}); renderer.setClearColor(0, 0); canvas = renderer.domElement; host.appendChild(canvas);
   tipEl = document.createElement('div'); tipEl.className = 'v3-tip'; host.appendChild(tipEl);
   scene = new Scene(); camera = new PerspectiveCamera(40, 1, .5, 400);
-  const hemi = new HemisphereLight(0xffffff, 0x8899aa, 1.2); scene.add(hemi); scene.userData.hemi = hemi;
-  const sun = new DirectionalLight(0xffffff, 1.3); sun.position.set(20, 40, 25); scene.add(sun);
+  scene.background = bgTex(); scene.fog = new Fog(0x0b1830, 120, 260); renderer.setClearColor(0x0b1830, 1);
+  const hemi = new HemisphereLight(0xcfe4ff, 0x0b1424, 1.15); scene.add(hemi); scene.userData.hemi = hemi;
+  const sun = new DirectionalLight(0xffffff, 1.25); sun.position.set(20, 40, 25); scene.add(sun);
+  const rim = new DirectionalLight(0x4fa0ff, .9); rim.position.set(-30, 18, -30); scene.add(rim);
+  composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera));
+  bloom = new UnrealBloomPass(new Vector2(512, 512), .48, .4, .9); composer.addPass(bloom); composer.addPass(new OutputPass());
   controls = new OrbitControls(camera, canvas); controls.enableDamping = true; controls.dampingFactor = .09; controls.maxPolarAngle = Math.PI * .495; controls.minDistance = 5; controls.maxDistance = 160; controls.autoRotateSpeed = .8;
   makeMats(); buildBuilding(); buildParticles(); applyTheme(); bindEvents(); resize(); resetView(true);
 }
@@ -1045,7 +1115,7 @@ export function update(s) {
 }
 export function setActive(b) { running = b; if (b) { resize(); applyTheme(); start(); } else stop(); }
 export function resetView(instant) {
-  const far = camera.aspect < .9 ? Math.min(2.7, 1.55 / camera.aspect) : 1, p1 = new Vector3(47 * far, 28 * far, 48 * far), t1 = new Vector3(13, 2, 2);
+  const far = camera.aspect < .9 ? Math.min(2.7, 1.55 / camera.aspect) : 1, p1 = new Vector3(38 * far, 25 * far, 41 * far), t1 = new Vector3(9, 3, 0);
   if (instant) { camera.position.copy(p1); controls.target.copy(t1); controls.update(); } else tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1};
 }
 export function setPump(q) { L.pump = q; }
@@ -1069,7 +1139,18 @@ export function focusFloor(fi) {
   const t1 = new Vector3(0, fi * FH + 1.5, 0), off = new Vector3(.45, .8, .9).normalize().multiplyScalar(camera.aspect < .9 ? 62 : 36);
   tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)};
 }
-export function snapshot() { renderer.render(scene, camera); return canvas.toDataURL('image/png'); }
+export function snapshot() { composer.render(); return canvas.toDataURL('image/png'); }
+export function setLayer(k, on) { if (k in LAYER) { LAYER[k] = !!on; applyLayers(); } }
+export function layers() { return {...LAYER}; }
+export function focusFM() {
+  const t1 = new Vector3(12, 1.7, -7), off = new Vector3(.55, .09, -.83).normalize().multiplyScalar(camera.aspect < .9 ? 24 : 16);
+  tween = {u: 0, t0: controls.target.clone(), t1, p0: camera.position.clone(), p1: t1.clone().add(off)};
+}
+/* device totals by kind for the Devices panel (counts what is drawn in the model) */
+export function deviceCounts() {
+  const c = {}; IN.forEach(d => { c[d.style] = (c[d.style] || 0) + 1; }); c.sprinkler = HEADS.length;
+  OUT.forEach(d => { if (d.g && d.g.userData.layer === 'notif') c.notif = (c.notif || 0) + 1; }); return c;
+}
 export function setFloor(n) { floorCap = n; applyFloors(); }
 export function setWalls(b) { showWalls = b; applyFloors(); }
 export function setAuto(b) { controls.autoRotate = b; }

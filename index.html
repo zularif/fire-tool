@@ -427,6 +427,59 @@ label.f{font-size:12px;}
 .v3-pump .go{color:var(--accent);font-weight:600}
 @media(max-width:560px){.v3-side{top:auto;bottom:30px;left:8px;right:8px;width:auto;max-height:52%}.v3-leg{font-size:10px;padding:5px 7px}.v3-pump{min-width:0;padding:6px 8px}.v3-pump .go{display:none}}
 #vpump[hidden],.bar[hidden]{display:none!important}
+/* ---------- 3D view: dark digital-twin skin (always dark, like a control-room screen) ---------- */
+.v3d{--fg:#e8f1fb;--muted:#93a7bf;--line:rgba(127,190,255,.22);--surface:rgba(10,21,40,.86);--surface-2:rgba(30,60,100,.55);--accent:#3fa2ff;--fire-soft:rgba(255,80,70,.18);
+  background:#0b1830;color:var(--fg);color-scheme:dark;box-shadow:0 0 0 1px #1c3656,0 18px 40px -20px rgba(0,10,30,.8)}
+.v3-top,.v3-bot,.v3-nav{background:linear-gradient(180deg,#0f2140,#0b1830)}
+.v3-top{border-bottom:1px solid #1c3656}.v3-bot{border-top:1px solid #1c3656}
+.v3d .btn{background:rgba(16,34,62,.9);border-color:#24456e;color:var(--fg)}
+.v3d .btn:hover:not(:disabled){background:#173257;border-color:#3fa2ff}
+.v3d .btn.dan{color:#ff7a70;border-color:#7a2a2a}
+.v3d .seg{border-color:#24456e}
+.v3-stage{background:#0b1830}
+.v3-side>*,.v3-pump,.v3-fire,.v3-ppl,.v3-sys,.v3-cap,.v3-menu{background:rgba(9,19,37,.84)!important;border:1px solid rgba(127,200,255,.28);border-radius:10px;
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 0 0 1px rgba(0,0,0,.25),0 8px 24px -10px rgba(0,0,0,.6),inset 0 1px 0 rgba(160,220,255,.08)}
+.v3-fire{border-left:5px solid #e8590c}.v3-ppl{border-left:5px solid #2b6cc4}.v3-cap{border-left:5px solid var(--accent)}
+.v3-tip{background:rgba(6,14,28,.95);border:1px solid rgba(127,200,255,.3)}
+.v3-pump{padding:9px 12px;gap:6px;min-width:168px}
+.v3-pump .hd b{font-size:13px}.v3-pump .hd span{font-size:17px;color:#fff}
+.v3-pump .go{display:block;margin-top:2px;padding:4px 8px;border-radius:6px;background:#1559b8;color:#fff;text-align:center}
+.vp-c{border-color:#2a4a72}
+.v3-huds{top:122px}
+.v3-pill{box-shadow:0 0 12px -2px currentColor}
+.v3-lay,.v3-cnt{display:flex;flex-direction:column;gap:2px;padding:8px 10px;font-size:11.5px;color:var(--muted)}
+.v3-lay .hd,.v3-cnt .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
+.v3-lay .hd b,.v3-cnt .hd b{font-size:12.5px;color:var(--fg)}.v3-cnt .hd span{font:700 14px ui-monospace,Menlo,Consolas,monospace;color:#fff}
+.v3-lay button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:4px 4px;border-radius:5px;cursor:pointer;color:var(--fg)}
+.v3-lay button:hover,.v3-lay button:focus-visible{background:rgba(63,162,255,.12)}
+.v3-lay button i{flex:none;width:20px;height:5px;border-radius:3px}
+.v3-lay button span{flex:1;min-width:0}
+.v3-lay button em{flex:none;width:16px;height:16px;background:no-repeat center/16px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237fd8ff' stroke-width='2'%3E%3Cpath d='M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E")}
+.v3-lay button[aria-pressed="false"]{color:var(--muted)}.v3-lay button[aria-pressed="false"] i{opacity:.3}
+.v3-lay button[aria-pressed="false"] em{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235d7290' stroke-width='2'%3E%3Cpath d='M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z'/%3E%3Cpath d='M3 3l18 18'/%3E%3C/svg%3E")}
+.v3-lay .nt{margin:4px 0 0;font-size:10.5px;line-height:1.35}
+.v3-cnt[hidden]{display:none!important}
+.v3d input[type=checkbox]{accent-color:#3fa2ff}
+.v3-cnt ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.v3-cnt li{display:flex;justify-content:space-between;gap:8px;padding:3px 2px;border-top:1px solid rgba(127,190,255,.1);color:var(--fg)}
+.v3-cnt li:first-child{border-top:0}.v3-cnt li b{font:600 12px ui-monospace,Menlo,Consolas,monospace}
+.v3-sys{position:absolute;left:10px;bottom:10px;z-index:2;display:flex;align-items:center;gap:12px;padding:10px 16px 10px 12px;pointer-events:none}
+.v3-sys .ic{flex:none;width:34px;height:34px;border-radius:50%;background:#22b35a;box-shadow:0 0 16px rgba(34,179,90,.7);display:grid;place-items:center}
+.v3-sys .ic::after{content:"";width:12px;height:7px;border-left:3px solid #fff;border-bottom:3px solid #fff;transform:translateY(-2px) rotate(-45deg)}
+.v3-sys small{display:block;font-size:11px;color:var(--muted);font-weight:600}.v3-sys b{display:block;font:800 21px/1.05 var(--f-head);color:#3fd47a;letter-spacing:.02em}
+.v3-sys.s1 .ic,.v3-sys.s2 .ic{background:#f0a43a;box-shadow:0 0 16px rgba(240,164,58,.7)}.v3-sys.s1 b,.v3-sys.s2 b{color:#ffc266}
+.v3-sys.s3 .ic{background:#ff3b30;box-shadow:0 0 18px rgba(255,59,48,.8);animation:v3blink 1s steps(2) infinite}.v3-sys.s3 b{color:#ff7a70}
+.v3-sys:not(.s0) .ic::after{width:3px;height:14px;border:0;background:#fff;transform:none;box-shadow:0 9px 0 -0px #fff;clip-path:inset(0 0 -6px 0)}
+@keyframes v3blink{50%{opacity:.45}}
+.v3-hint{left:auto;right:10px;text-align:right;color:#7f93ab}
+.v3-nav{display:flex;gap:6px;padding:8px 10px;overflow-x:auto;border-top:1px solid #1c3656;scrollbar-width:thin}
+.v3-nav button{flex:1 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:118px;padding:9px 12px;border-radius:8px;border:1px solid #24456e;background:rgba(16,34,62,.9);color:#e8f1fb;font:600 13px var(--f-body);cursor:pointer}
+.v3-nav button svg{width:18px;height:18px;flex:none;stroke:#7fd8ff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.v3-nav button:hover,.v3-nav button:focus-visible{border-color:#3fa2ff;background:#173257}
+.v3-nav button[aria-pressed="true"]{background:linear-gradient(180deg,#1f6fe0,#1559b8);border-color:#4fa8ff;box-shadow:0 0 14px -3px #3fa2ff}
+.v3-nav button[aria-pressed="true"] svg{stroke:#fff}
+@media(max-width:560px){.v3-sys{left:8px;bottom:8px;padding:6px 10px 6px 8px}.v3-sys b{font-size:16px}.v3-sys .ic{width:26px;height:26px}.v3-hint{display:none}.v3-nav button{min-width:0}}
+
 .v3-menuwrap{position:relative;display:inline-flex}
 .v3-menu{position:absolute;bottom:calc(100% + 6px);right:0;min-width:210px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px;z-index:6;box-shadow:0 6px 24px rgba(0,0,0,.18);display:flex;flex-direction:column}
 .v3-menu[hidden]{display:none}
@@ -517,6 +570,7 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
 .wg-toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:#2a1d0a;border:1px solid #c98a1a;color:#ffd58a;padding:7px 12px;border-radius:8px;font-size:12.5px}
 @media(max-width:900px){.wg-main{flex-direction:column;height:auto}.wg-vp{height:520px}.wg-side{width:auto;border-left:0;border-top:1px solid var(--line)}}
 </style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/"}}</script>
 </head>
 <body>
 
@@ -545,7 +599,14 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
       <div class="v3-cap" id="v3-cap" hidden aria-live="polite"><div class="n" id="cap-n"></div><div class="t" id="cap-t"></div><div class="prog"><i id="cap-p"></i></div>
         <div class="row"><button class="btn" id="cap-pause" type="button" aria-pressed="false">Pause</button><span class="seg" id="cap-sp" role="group" aria-label="Speed"><button class="btn" type="button" data-s="1" aria-pressed="true">×1</button><button class="btn" type="button" data-s="2" aria-pressed="false">×2</button><button class="btn" type="button" data-s="4" aria-pressed="false">×4</button></span><button class="btn" id="cap-stop" type="button">Stop</button></div></div>
       <div class="v3-side">
-      <div class="v3-leg" aria-label="Pipe colours"><span><i style="background:#e5392f"></i>Wet sprinkler · Ground</span><span><i style="background:#7a1717"></i>Pre-action sprinkler · L1–L2</span><span><i style="background:#4fa0ff"></i>Pre-action filled after release</span><span><i style="background:#aab3bb;box-shadow:0 0 5px #1565ff"></i>Fire pump supply · glows blue when pumping</span></div>
+      <div class="v3-lay" id="v3-lay" role="group" aria-label="System layers"><div class="hd"><b>System layers</b></div>
+        <button type="button" data-ly="water" aria-pressed="true"><i style="background:#aab3bb;box-shadow:0 0 6px #1565ff"></i><span>Water supply &amp; fire pump</span><em></em></button>
+        <button type="button" data-ly="sprinkler" aria-pressed="true"><i style="background:linear-gradient(90deg,#ff3b2f 50%,#b01c1c 50%)"></i><span>Sprinkler piping (wet / pre-action)</span><em></em></button>
+        <button type="button" data-ly="fm200" aria-pressed="true"><i style="background:#2f7dff;box-shadow:0 0 6px #2f7dff"></i><span>FM200 piping (HFC-227ea)</span><em></em></button>
+        <button type="button" data-ly="fas" aria-pressed="true"><i style="background:#e9eef3"></i><span>Fire alarm devices</span><em></em></button>
+        <button type="button" data-ly="notif" aria-pressed="true"><i style="background:#f6a623"></i><span>Notification devices</span><em></em></button>
+        <button type="button" data-ly="labels" aria-pressed="true"><i style="background:#7fd8ff"></i><span>Labels &amp; callouts</span><em></em></button>
+        <p class="nt">Wet pipes on G are red, pre-action pipes on L1–L2 dark red and turn blue once filled. Pump supply glows blue while pumping.</p></div>
       <div class="v3-act" id="v3-act" data-open="1"><button class="hd" id="va-hd" type="button" aria-expanded="true" aria-controls="va-bd"><b>Active devices</b><span class="n" id="va-n">none</span></button>
         <div class="bd" id="va-bd">
           <h4>Inputs in alarm (causes)</h4><ul id="va-in"></ul>
@@ -553,12 +614,23 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
           <div id="va-pw"></div>
           <label class="tg"><input type="checkbox" id="va-lines" checked> Show cause-and-effect lines</label>
         </div></div>
+      <div class="v3-cnt" id="v3-cnt" hidden><div class="hd"><b>Devices in model</b><span id="vc-n">0</span></div><ul id="vc-l"></ul></div>
     </div>
       <button class="v3-pump" id="v3-pumphud" type="button" aria-label="Fire pump status. Open the fire pump page"><span class="hd"><b>Fire pump</b><span id="vp-p">–</span></span><span class="ch"><span class="vp-c" data-k="0" title="Jockey pump"><i></i>J</span><span class="vp-c" data-k="1" title="Electric pump (duty)"><i></i>E</span><span class="vp-c" data-k="2" title="Diesel pump (standby)"><i></i>D</span></span><span id="vp-t">Tank –</span><span class="go">Open pump page</span></button>
       <div class="v3-huds"><button class="v3-fire" id="v3-firehud" type="button" hidden aria-live="polite" title="Go to the fire"></button>
         <div class="v3-ppl" id="v3-pplhud" hidden aria-live="polite"></div></div>
+      <div class="v3-sys s0" id="v3-sys" aria-hidden="true"><span class="ic"></span><div><small>System status</small><b id="v3-sys-t">NORMAL</b></div></div>
       <div class="v3-hint">Drag to orbit · scroll or pinch to zoom · tap a detector, call point or valve to trigger it</div>
     </div>
+    <nav class="v3-nav" id="v3-nav" aria-label="3D views">
+      <button type="button" data-go="reset" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Overview</button>
+      <button type="button" data-go="pump"><svg viewBox="0 0 24 24"><circle cx="9" cy="13" r="5"/><path d="M14 13h7M9 8V4h5"/><path d="M4 20h10"/></svg>Fire pump</button>
+      <button type="button" data-go="valve"><svg viewBox="0 0 24 24"><path d="M12 3v6"/><path d="M5 9h14"/><path d="M8 13l-2 3M12 13v4M16 13l2 3"/></svg>Sprinkler</button>
+      <button type="button" data-go="fm"><svg viewBox="0 0 24 24"><rect x="8" y="6" width="8" height="15" rx="3"/><path d="M12 6V3M10 3h4"/></svg>FM200</button>
+      <button type="button" data-go="ctrl"><svg viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0112 0v6"/><path d="M4 17h16M10 20h4"/></svg>Fire alarm</button>
+      <button type="button" data-go="ffloor"><svg viewBox="0 0 24 24"><path d="M12 3c1 3 5 5 5 10a5 5 0 01-10 0c0-3 2-4 2-7 1 1 2 2 3 3 0-2 0-4 0-6z"/></svg>Fire floor</button>
+      <button type="button" data-go="stairx"><svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="2"/><path d="M9 21l2-6 3 3v3M7 12l3-4 4 2 3 3"/></svg>Evacuation</button>
+    </nav>
     <div class="v3-bot">
       <button class="btn" id="k3-ack" type="button">Acknowledge</button>
       <button class="btn" id="k3-sil" type="button" aria-pressed="false">Signal silence</button>
@@ -1675,6 +1747,14 @@ function vaRender(c){
   const n=$('#va-n');n.textContent=ins.length||outs.length?ins.length+' in · '+outs.length+' out':'none';n.classList.toggle('hot',ins.length>0);
   const fls=new Set(ins.map(d=>d.fl));$('#v3-floors').querySelectorAll('[data-fl]').forEach(b=>{const f=+b.dataset.fl;b.classList.toggle('alm',f===3?ins.length>0:fls.has(['G','L1','L2'][f]))});
 }
+const VC_NAME={smoke:'Smoke detector',heat:'Heat detector',mcp:'Manual call point',button:'Manual release / abort',valve:'Pre-action valve',flow:'Flow switch',pump:'Fire pump signal',sprinkler:'Sprinkler head',notif:'Bell / sounder / strobe'};
+let vcSig='';
+function vcRender(){
+  if(!F3||!F3.deviceCounts)return;const c=F3.deviceCounts(),sig=JSON.stringify(c);if(sig===vcSig)return;vcSig=sig;
+  const rows=Object.keys(VC_NAME).filter(k=>c[k]).map(k=>[VC_NAME[k],c[k]]);
+  $('#vc-l').innerHTML=rows.map(([n,v])=>`<li><span>${esc(n)}</span><b>${v.toLocaleString('en-US')}</b></li>`).join('');
+  $('#vc-n').textContent=rows.reduce((a,r)=>a+r[1],0).toLocaleString('en-US');$('#v3-cnt').hidden=!rows.length;
+}
 function f3Sync(c){
   const rank=c.top?TYPE[c.top.type].rank:0;
   F3.update({links:f3Links(c),C:cfg(),on:S.on,outState:c.outState,inState:c.inState,sil:S.sil,ack:S.ack,rank,release:c.matched.some(r=>r.type==='fire'&&r.when.some(w=>w.groups.includes('pa'))),
@@ -1684,10 +1764,12 @@ function f3Sync(c){
     b.disabled=a.disabled;b.setAttribute('aria-pressed',a.getAttribute('aria-pressed')||'false');b.classList.toggle('attn',a.classList.contains('attn'))});
   vaRender(c);
   const p=$('#v3-pill');p.textContent=$('#pill').textContent;p.className='v3-pill s'+rank;$('#v3-txt').textContent=$('#stage-txt').textContent;
+  $('#v3-sys').className='v3-sys s'+rank;$('#v3-sys-t').textContent=$('#pill').textContent.toUpperCase();
+  vcRender();
 }
 function f3Init(){
   if(F3)return Promise.resolve(F3);
-  if(!f3Pending)f3Pending=Promise.all([document.fonts.load('700 38px "Atkinson Hyperlegible"'),import('./fire3d.js?v=13')]).then(([,m])=>{
+  if(!f3Pending)f3Pending=Promise.all([document.fonts.load('700 38px "Atkinson Hyperlegible"'),import('./fire3d.src.js?v=14').catch(e=>{console.warn('3D: using bundled fire3d.js',e);return import('./fire3d.js?v=13')})]).then(([,m])=>{
     m.init($('#v3-stage'),{toggle:id=>toggle(id),describe:f3Describe});F3=m;m.onPeople((ty,t)=>{pplLast=t;log(ty==='danger'?'fire':ty==='start'?'pre':'ok','PEOPLE · '+t)});m.onFire((k,t)=>{fireLast=t;log(/out|Too big/.test(t)&&!/Too big/.test(t)?'ok':'fire','FIRE · '+t)});const l=$('#v3-load');if(l)l.remove();return m;
   }).catch(e=>{f3Pending=null;const l=$('#v3-load');if(l)l.textContent='3D view could not load ('+((e&&e.message)||e)+'). Check that fire3d.js is uploaded next to index.html and that this browser supports WebGL.';return null});
   return f3Pending;
@@ -1914,6 +1996,11 @@ $('#v3-rot').addEventListener('click',e=>{const b=e.currentTarget,v=b.getAttribu
 $('#v3-focus').addEventListener('click',()=>{if(F3&&!F3.focusAlarm())log('ok','3D VIEW · no device in alarm to focus on')});
 $('#v3-valve').addEventListener('click',()=>F3&&F3.focusValve());
 $('#v3-reset').addEventListener('click',()=>F3&&F3.resetView());
+$('#v3-lay').addEventListener('click',e=>{const b=e.target.closest('[data-ly]');if(!b)return;const v=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',v);if(F3&&F3.setLayer)F3.setLayer(b.dataset.ly,v)});
+$('#v3-nav').addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b||!F3)return;const g=b.dataset.go;
+  $('#v3-nav').querySelectorAll('[data-go]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  if(g==='fm'){if(F3.focusFM)F3.focusFM();return}
+  const t=$('#v3-'+g);if(t)t.click()});
 
 renderLog();build();load();
 if(location.hash==='#3d')setMode('3d');else if(location.hash==='#pump')setMode('pump');else if(location.hash==='#fm200')setMode('fm');
