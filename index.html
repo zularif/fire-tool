@@ -457,7 +457,8 @@ label.f{font-size:12px;}
 .v3-act .empty{font-style:italic;padding:2px 6px}
 .v3-act .tg{display:flex;align-items:center;gap:6px;padding-top:4px;border-top:1px solid var(--line);cursor:pointer}
 #v3-floors [data-fl].alm::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#ff3b30;margin-left:5px;vertical-align:middle}
-#pumpf{width:100%;border:0;display:block;min-height:760px;background:transparent}
+#pumpf,#fmf{width:100%;border:0;display:block;min-height:760px;background:transparent}
+#vfm[hidden]{display:none!important}
 .v3-leg i{display:inline-block;width:18px;height:6px;border-radius:2px;margin-right:6px;vertical-align:middle}
 
 h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3,.ed-head h2{font-family:var(--f-head);font-stretch:90%}
@@ -527,6 +528,7 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
         <button class="btn" id="k-v2d" type="button" aria-pressed="true">2D diagram</button>
         <button class="btn" id="k-v3d" type="button" aria-pressed="false">3D building</button>
         <button class="btn" id="k-vpump" type="button" aria-pressed="false">Fire pump</button>
+        <button class="btn" id="k-vfm" type="button" aria-pressed="false">FM200 system</button>
       </span>
       <button class="btn" id="k-guide" type="button" aria-haspopup="dialog" aria-controls="guide-dialog">Quick guide</button>
       <button class="btn" id="k-about" type="button" aria-haspopup="dialog" aria-controls="about-dialog">Project Info</button>
@@ -591,6 +593,7 @@ h1,h2,h3,.hdr b,.txt .t,.pill,.v3-pill,.tab,.sgs-h,.guide-card h2,.about-card h3
   </section>
 
   <section id="vpump" hidden aria-label="Fire pump simulator"><iframe id="pumpf" title="Fire pump simulator" allow="fullscreen"></iframe></section>
+  <section id="vfm" hidden aria-label="FM200 system in 3D"><iframe id="fmf" title="FM200 clean agent system in 3D" allow="fullscreen"></iframe></section>
 
   <div class="bar">
     <div class="pane">
@@ -1692,10 +1695,10 @@ function f3Init(){
 let mode='2d';
 async function setMode(m){
   mode=m;view3=m==='3d';
-  $('.scroller').hidden=m!=='2d';$('#v3d').hidden=m!=='3d';$('#vpump').hidden=m!=='pump';$('.bar').hidden=m==='pump';
-  $('#k-v2d').setAttribute('aria-pressed',m==='2d');$('#k-v3d').setAttribute('aria-pressed',m==='3d');$('#k-vpump').setAttribute('aria-pressed',m==='pump');
-  try{history.replaceState(null,'',m==='3d'?'#3d':m==='pump'?'#pump':location.pathname+location.search)}catch(e){}
-  pumpLoad();
+  $('.scroller').hidden=m!=='2d';$('#v3d').hidden=m!=='3d';$('#vpump').hidden=m!=='pump';$('#vfm').hidden=m!=='fm';$('.bar').hidden=m==='pump'||m==='fm';
+  $('#k-v2d').setAttribute('aria-pressed',m==='2d');$('#k-v3d').setAttribute('aria-pressed',m==='3d');$('#k-vpump').setAttribute('aria-pressed',m==='pump');$('#k-vfm').setAttribute('aria-pressed',m==='fm');
+  try{history.replaceState(null,'',m==='3d'?'#3d':m==='pump'?'#pump':m==='fm'?'#fm200':location.pathname+location.search)}catch(e){}
+  pumpLoad();fmShow(m==='fm');
   if(view3){const f=await f3Init();if(f&&view3){if(LASTC)f3Sync(LASTC);f.setActive(true)}}
   else if(F3)F3.setActive(false);
   if(m!=='2d')window.scrollTo(0,0);
@@ -1704,6 +1707,11 @@ function setView(on){return setMode(on?'3d':'2d')}
 /* ---- fire pump bridge: the pump page runs in an iframe; sprinkler heads opened here feed its demand, its pressure/pumps/tank feed the 3D view ---- */
 const pumpF=$('#pumpf');let PA=null,pumpStarted=false;
 function pumpLoad(){if(!pumpStarted){pumpStarted=true;pumpF.src='pump.html'}}
+/* ---- FM200 3D page: loads on first visit, pauses its render loop while hidden ---- */
+const fmF=$('#fmf');
+function fmShow(on){if(on&&!fmF.src)fmF.src='fm200.html';try{fmF.contentWindow.postMessage({fmActive:on},'*')}catch(e){}}
+fmF.addEventListener('load',()=>fmShow(mode==='fm'));
+window.addEventListener('message',e=>{if(e.source===fmF.contentWindow&&e.data&&e.data.fmH)fmF.style.height=Math.max(700,e.data.fmH+4)+'px'});
 pumpF.addEventListener('load',()=>{try{PA=pumpF.contentWindow.PUMPAPI||null}catch(e){PA=null}pumpHeads()});
 window.addEventListener('message',e=>{if(e.source===pumpF.contentWindow&&e.data&&e.data.pumpH)pumpF.style.height=Math.max(700,e.data.pumpH+4)+'px'});
 function bldHeads(c){
@@ -1886,6 +1894,7 @@ $('#cap-stop').addEventListener('click',scStop);
 $('#cap-pause').addEventListener('click',e=>{if(!sc)return;sc.paused=!sc.paused;e.currentTarget.setAttribute('aria-pressed',sc.paused);e.currentTarget.textContent=sc.paused?'Resume':'Pause'});
 $('#cap-sp').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(!b)return;$('#cap-sp').querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(sc)sc.speed=+b.dataset.s});
 $('#k-vpump').addEventListener('click',()=>setMode('pump'));
+$('#k-vfm').addEventListener('click',()=>setMode('fm'));
 $('#va-hd').addEventListener('click',()=>{const a=$('#v3-act'),o=a.dataset.open==='1'?'0':'1';a.dataset.open=o;$('#va-hd').setAttribute('aria-expanded',o==='1')});
 if(window.matchMedia&&matchMedia('(max-width:560px)').matches){$('#v3-act').dataset.open='0';$('#va-hd').setAttribute('aria-expanded','false')}
 $('#va-lines').addEventListener('change',e=>F3&&F3.showLinkLines(e.target.checked));
@@ -1907,7 +1916,7 @@ $('#v3-valve').addEventListener('click',()=>F3&&F3.focusValve());
 $('#v3-reset').addEventListener('click',()=>F3&&F3.resetView());
 
 renderLog();build();load();
-if(location.hash==='#3d')setMode('3d');else if(location.hash==='#pump')setMode('pump');
+if(location.hash==='#3d')setMode('3d');else if(location.hash==='#pump')setMode('pump');else if(location.hash==='#fm200')setMode('fm');
 </script>
 
 </body>

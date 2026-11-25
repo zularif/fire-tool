@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FM200 System 3D</title>
+<meta name="description" content="Interactive 3D FM200 clean agent system: watch the agent travel from the cylinders through the manifold and piping to the nozzles.">
+<style>@font-face{font-family:"Archivo";src:url(fonts/archivo-var.woff2) format("woff2");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url(fonts/atkinson-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url(fonts/atkinson-700.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible Mono";src:url(fonts/atkinson-mono-400.woff2) format("woff2");font-weight:400;font-display:swap}
+
+html,body{margin:0}
+:root{
+  --bg:#e4e8eb; --surface:#f3f5f6; --ink:#1b2126; --muted:#56616b; --line:#c2c9cf; --input:#ffffff;
+  --red:#c1121f; --gas:#1e7fb8; --amber:#9a5b00; --ok:#1f7a3a; --stage:#d9dee2;
+  --display:'Archivo',system-ui,Arial,sans-serif; --body:'Atkinson Hyperlegible',system-ui,Arial,sans-serif; --mono:'Atkinson Hyperlegible Mono',Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#13171b; --surface:#1b2126; --ink:#e8ecef; --muted:#9aa5ae; --line:#333b43; --input:#12161a;
+    --red:#ff5a5f; --gas:#5cc3f5; --amber:#f0a73a; --ok:#4cc27a; --stage:#1a1f24; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#13171b; --surface:#1b2126; --ink:#e8ecef; --muted:#9aa5ae; --line:#333b43; --input:#12161a;
+  --red:#ff5a5f; --gas:#5cc3f5; --amber:#f0a73a; --ok:#4cc27a; --stage:#1a1f24; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.45 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 40px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gas);outline-offset:2px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px 24px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.slashes{display:flex;gap:5px;flex:none}.slashes i{display:block;width:9px;height:34px;background:var(--red);transform:skewX(-22deg)}.slashes i:first-child{width:14px}
+h1{margin:0;font:700 clamp(24px,5vw,34px)/1 var(--display)}
+.lede{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:70ch}
+.back{color:var(--muted);font-size:13px}
+.emb .brand,.emb .back{display:none}
+body.emb{padding-block:6px 24px}
+
+.stage{position:relative;height:min(68vh,640px);min-height:380px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--stage)}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.load{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;padding:20px;text-align:center}
+.hud{position:absolute;left:10px;top:10px;width:230px;display:flex;flex-direction:column;gap:7px;padding:10px 12px;border-radius:6px;background:color-mix(in srgb,var(--surface) 90%,transparent);border:1px solid var(--line);font-size:12px;color:var(--muted)}
+.hud .ph{font:700 16px/1.15 var(--display);color:var(--ink)}
+.hud .ph.alm{color:var(--amber)}.hud .ph.rel{color:var(--gas)}.hud .ph.fire{color:var(--red)}.hud .ph.ok{color:var(--ok)}
+.hud .row{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.hud .row b{font:600 13px var(--mono);color:var(--ink)}
+.meter{position:relative;height:7px;border-radius:4px;background:var(--line);overflow:hidden}
+.meter i{position:absolute;left:0;top:0;bottom:0;background:var(--gas);border-radius:4px}
+.meter.p i{background:var(--red)}
+.meter u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.55}
+.cams{position:absolute;right:10px;top:10px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:60%}
+.cams button{border:1px solid var(--line);background:var(--surface);border-radius:5px;padding:4px 9px;font-size:12px;cursor:pointer}
+.cams button[aria-pressed="true"]{border-color:var(--gas);color:var(--gas)}
+.cap{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);width:min(760px,calc(100% - 24px));text-align:center;
+  font:700 clamp(14px,2.2vw,19px)/1.35 var(--body);color:#fff;text-shadow:0 1px 3px #000,0 0 10px rgba(0,0,0,.8);pointer-events:none}
+.cap small{display:block;font-weight:400;font-size:.78em;opacity:.92}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.grp{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.grp .lbl{font-size:12px;color:var(--muted);margin-right:2px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 13px;cursor:pointer;font-size:14px}
+.btn:hover:not(:disabled){border-color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.pri{background:var(--red);border-color:var(--red);color:#fff;font-weight:700}
+.btn.gas{border-color:var(--gas);color:var(--gas);font-weight:700}
+.btn.abort[aria-pressed="true"]{background:#1e5fc4;border-color:#1e5fc4;color:#fff}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:5px 10px;font-size:13px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.sw{display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer;border:0;background:none;padding:2px}
+.sw .tr{width:30px;height:17px;border-radius:9px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.sw .tr::after{content:"";position:absolute;left:2px;top:2px;width:13px;height:13px;border-radius:50%;background:var(--input);transition:left .15s}
+.sw[aria-checked="true"] .tr{background:var(--gas)}.sw[aria-checked="true"] .tr::after{left:15px}
+
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.steps li{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--line);border-radius:6px;padding:8px 10px;font-size:12.5px;color:var(--muted)}
+.steps li b{display:block;color:var(--ink);font-size:13.5px;margin-bottom:2px}
+.steps li.done{border-top-color:var(--muted)}
+.steps li.now{border-top-color:var(--gas);background:color-mix(in srgb,var(--gas) 9%,var(--surface))}
+.note{font-size:12px;color:var(--muted);margin:0}
+@media(max-width:560px){.hud{width:auto;right:10px;top:auto;bottom:auto;font-size:11px;padding:7px 9px;gap:4px}.hud .hide-sm{display:none}
+  .cams{top:auto;bottom:8px;right:8px;max-width:none}.cap{bottom:auto;top:96px;font-size:13px}.stage{height:70vh}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><div class="slashes" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div><h1>FM200 Clean Agent System</h1><p class="lede">Server room protected by two FM200 cylinders. Start a fire and follow the agent from the cylinders, through the hoses, manifold and piping, out of the nozzles.</p></div></div>
+    <a class="back" href="index.html">← Fire alarm simulator</a>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="load" id="load">Loading 3D view…</div>
+    <div class="hud" id="hud" aria-live="polite">
+      <div class="ph" id="h-ph">Standby</div>
+      <div class="row" id="h-cdr" hidden><span>Release in</span><b id="h-cd">–</b></div>
+      <div class="row"><span>Master cylinder</span><b id="h-p0">25.0 bar</b></div>
+      <div class="meter p"><i id="m-p0" style="width:100%"></i></div>
+      <div class="row"><span>Slave cylinder</span><b id="h-p1">25.0 bar</b></div>
+      <div class="meter p"><i id="m-p1" style="width:100%"></i></div>
+      <div class="row"><span>Agent in room</span><b id="h-c">0.0 %</b></div>
+      <div class="meter" title="Design concentration about 7%, NOAEL 9%"><i id="m-c" style="width:0"></i><u style="left:70%"></u><u style="left:90%"></u></div>
+      <div class="row hide-sm"><span>Discharge time</span><b id="h-t">–</b></div>
+    </div>
+    <div class="cams" role="group" aria-label="Camera">
+      <button type="button" data-cam="overview" aria-pressed="true">Overview</button>
+      <button type="button" data-cam="cyl">Cylinders</button>
+      <button type="button" data-cam="pipe">Piping</button>
+      <button type="button" data-cam="noz">Nozzle</button>
+    </div>
+    <div class="cap" id="cap"></div>
+  </div>
+
+  <div class="ctrl">
+    <div class="grp">
+      <button class="btn pri" id="b-fire" type="button">Start fire</button>
+      <button class="btn" id="b-man" type="button" title="Pull the manual release station: skips detection, starts the countdown">Manual release</button>
+      <button class="btn gas" id="b-dis" type="button" title="Jump straight to the release so you can watch the gas flow">Watch discharge now</button>
+      <button class="btn abort" id="b-abort" type="button" aria-pressed="false" disabled title="Holding the abort switch pauses the countdown">Hold abort</button>
+      <button class="btn" id="b-reset" type="button">Reset</button>
+    </div>
+    <div class="grp"><span class="lbl">Speed</span><span class="seg" id="g-speed"><button type="button" data-v=".35">Slow</button><button type="button" data-v="1" aria-pressed="true">1×</button><button type="button" data-v="2">2×</button></span></div>
+    <div class="grp"><span class="lbl">Delay</span><span class="seg" id="g-delay"><button type="button" data-v="30">30 s</button><button type="button" data-v="10" aria-pressed="true">10 s</button></span></div>
+    <div class="grp">
+      <button class="sw" id="s-xray" type="button" role="switch" aria-checked="false"><span class="tr"></span>See-through pipes</button>
+      <button class="sw" id="s-lab" type="button" role="switch" aria-checked="true"><span class="tr"></span>Labels</button>
+      <button class="sw" id="s-wall" type="button" role="switch" aria-checked="true"><span class="tr"></span>Walls</button>
+      <button class="sw" id="s-auto" type="button" role="switch" aria-checked="true"><span class="tr"></span>Auto camera</button>
+    </div>
+  </div>
+
+  <ol class="steps" id="steps">
+    <li><b>1 · Standby</b>Cylinders hold liquid FM200, pushed by nitrogen at 25 bar (360 psi). Panel normal.</li>
+    <li><b>2 · First alarm</b>One smoke detector (Zone 1) sees smoke. Alarm bell rings. Nothing is released yet.</li>
+    <li><b>3 · Second alarm</b>Zone 2 confirms (cross-zone). Sounder &amp; strobe, HVAC off, countdown starts. Leave the room.</li>
+    <li><b>4 · Release</b>Panel fires the solenoid on the master cylinder. Pilot pressure opens the slave valve.</li>
+    <li><b>5 · Through the pipes</b>Agent flows down the hoses, through check valves into the manifold and along the pipe network.</li>
+    <li><b>6 · Nozzle discharge</b>Liquid flashes to gas at the 360° nozzles and fills the room within 10 seconds.</li>
+    <li><b>7 · Fire out</b>About 7% concentration puts the fire out. Keep the room closed for the hold time, then ventilate.</li>
+  </ol>
+  <p class="note">Training model, not a design tool. Real FM200 is colourless; it is shown as white mist here. The flow is slowed down so you can follow it: in a real system the agent reaches the nozzles in about a second and the whole discharge is over in 10 seconds or less (NFPA 2001).</p>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+try { await document.fonts.load('700 44px "Atkinson Hyperlegible"'); } catch (e) {}
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const RX = 5, RZ = 3.5, RH = 3.2;          // room half-width (x), half-depth (z), height (m)
+const V = 3.2;                              // shown agent speed in the pipes (m/s, slowed for viewing)
+const P0 = 25, PEND = 2.2;                  // cylinder bar before / after discharge
+const CONC = 7.0;                           // design concentration %
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const v3 = (x, y, z) => new THREE.Vector3(x, y, z);
+
+/* ---------------------------------------------------------------- embed link */
+let EMB = false; try { EMB = window.parent !== window && !!window.parent.document; } catch (e) {}
+if (EMB) {
+  document.body.classList.add('emb');
+  try { const th = window.parent.document.documentElement.getAttribute('data-theme'); if (th) document.documentElement.setAttribute('data-theme', th); } catch (e) {}
+  const postH = () => { try { window.parent.postMessage({fmH: Math.ceil(document.body.getBoundingClientRect().height)}, '*'); } catch (e) {} };
+  new ResizeObserver(postH).observe(document.body); postH();
+}
+let active = true;
+window.addEventListener('message', e => { if (e.data && typeof e.data.fmActive === 'boolean') active = e.data.fmActive; });
+
+/* ---------------------------------------------------------------- renderer */
+const stage = $('#stage');
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.prepend(renderer.domElement);
+$('#load').remove();
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, .05, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * .49; controls.minDistance = .6; controls.maxDistance = 25;
+const isDark = () => getComputedStyle(document.documentElement).getPropertyValue('--stage').trim();
+const setBg = () => scene.background = new THREE.Color(isDark() || '#d9dee2');
+setBg(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', setBg);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a9098, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(6, 10, 7); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, {left: -8, right: 8, top: 8, bottom: -8, near: 1, far: 30}); sun.shadow.bias = -.0005;
+scene.add(sun);
+
+/* ---------------------------------------------------------------- helpers */
+const std = (color, o = {}) => new THREE.MeshStandardMaterial({color, roughness: .55, metalness: .1, ...o});
+const MAT = {
+  red: std(0xd01818, {roughness: .35, metalness: .15}), brass: std(0xc89b4f, {roughness: .3, metalness: .8}),
+  steel: std(0xb5bcc3, {roughness: .3, metalness: .75}), black: std(0x16181b, {roughness: .5}), dark: std(0x2b2f33, {roughness: .7}),
+  white: std(0xf1f2f0), wall: std(0xe6e8e8, {roughness: .9}), yellow: std(0xf2c21b), blue: std(0x1e5fc4)
+};
+const pipeMat = std(0xd01818, {roughness: .35, metalness: .15, transparent: true});
+const coreMat = new THREE.MeshBasicMaterial({color: 0xcff4ff, transparent: true, opacity: .95, depthWrite: false});
+const mesh = (geo, mat, x = 0, y = 0, z = 0, parent = scene) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parent.add(m); return m; };
+const UP = v3(0, 1, 0);
+function rod(a, b, r, mat, parent = scene, base = false) {          // cylinder from a to b; base=true scales from a
+  const g = new THREE.CylinderGeometry(r, r, 1, 18); if (base) g.translate(0, .5, 0);
+  const m = mesh(g, mat, 0, 0, 0, parent), d = b.clone().sub(a), len = d.length();
+  m.quaternion.setFromUnitVectors(UP, d.normalize()); m.scale.set(1, len, 1);
+  m.position.copy(base ? a : a.clone().lerp(b, .5)); m.userData.len = len; return m;
+}
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); draw(x, w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.userData = {c, x}; return t;
+}
+const labels = [];
+function label(text, pos, size = .16, sub = '') {
+  const t = canvasTex(512, sub ? 150 : 104, (x, w, h) => {
+    x.fillStyle = 'rgba(20,24,28,.82)'; x.beginPath(); x.roundRect(2, 2, w - 4, h - 4, 18); x.fill();
+    x.fillStyle = '#fff'; x.font = '700 44px "Atkinson Hyperlegible", Arial'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(text, w / 2, sub ? 52 : h / 2, w - 30);
+    if (sub) { x.font = '400 32px "Atkinson Hyperlegible", Arial'; x.fillStyle = '#c9d3da'; x.fillText(sub, w / 2, 110, w - 30); }
+  });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({map: t, depthTest: false, transparent: true}));
+  s.renderOrder = 20; s.position.copy(pos); size *= 1.5; s.scale.set(size * 512 / 104, size * t.image.height / 104, 1); scene.add(s); labels.push(s); return s;
+}
+
+/* ---------------------------------------------------------------- room */
+const floorTex = canvasTex(256, 256, (x, w) => { x.fillStyle = '#d3d7da'; x.fillRect(0, 0, w, w); x.strokeStyle = '#a9b0b5'; x.lineWidth = 3; x.strokeRect(1, 1, w - 2, w - 2);
+  x.fillStyle = '#c6cbcf'; for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) if ((i + j) % 2) x.fillRect(40 + i * 30, 40 + j * 30, 6, 6); });
+floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(RX * 2 / .6, RZ * 2 / .6);
+const floor = mesh(new THREE.BoxGeometry(RX * 2, .1, RZ * 2), std(0xffffff, {map: floorTex, roughness: .8}), 0, -.05, 0); floor.castShadow = false;
+const walls = new THREE.Group(); scene.add(walls);
+mesh(new THREE.BoxGeometry(RX * 2 + .1, RH, .1), MAT.wall, -.05, RH / 2, -RZ - .05, walls);
+mesh(new THREE.BoxGeometry(.1, RH, RZ * 2), MAT.wall, -RX - .05, RH / 2, 0, walls);
+{ // ceiling outline + light tiles
+  const p = [[-RX, -RZ], [RX, -RZ], [RX, RZ], [-RX, RZ]], pts = [];
+  for (let i = 0; i < 4; i++) { const a = p[i], b = p[(i + 1) % 4]; pts.push(v3(a[0], RH, a[1]), v3(b[0], RH, b[1])); }
+  for (let i = 0; i < 4; i++) { const a = p[i]; pts.push(v3(a[0], 0, a[1]), v3(a[0], RH, a[1])); }
+  scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color: 0x8a949c, transparent: true, opacity: .6})));
+}
+
+/* ---------------------------------------------------------------- server racks */
+const rackTex = [0, 1].map(k => canvasTex(128, 256, (x, w, h) => {
+  x.fillStyle = '#0c0e10'; x.fillRect(0, 0, w, h); x.fillStyle = '#1a1e22'; x.fillRect(6, 6, w - 12, h - 12);
+  for (let u = 0; u < 15; u++) { const y = 12 + u * 15.6; x.fillStyle = '#23292e'; x.fillRect(10, y, w - 20, 12);
+    x.fillStyle = '#1565ff'; x.fillRect(w - 30, y + 2, 16, 8);
+    for (let l = 0; l < 4; l++) { const on = ((u * 7 + l * 3 + k * 5) % 5) > 1; x.fillStyle = l === 3 ? (on ? '#ff3b30' : '#401010') : (on ? '#3cff6a' : '#0e3a18'); x.fillRect(16 + l * 12, y + 3, 6, 6); } }
+}));
+const racks = [];
+function rack(x, z, face) {
+  const side = std(0x111315, {roughness: .4, metalness: .3}), front = [0, 1].map(k => std(0xffffff, {map: rackTex[k], emissive: 0xffffff, emissiveMap: rackTex[k], emissiveIntensity: .55, roughness: .35}));
+  const mats = [side, side, side, side, face > 0 ? front[0] : side, face < 0 ? front[0] : side];
+  const m = mesh(new THREE.BoxGeometry(.6, 2.0, 1.1), mats, x, 1.0, z); racks.push({m, front, fi: face > 0 ? 4 : 5, k: 0, next: Math.random() * 2}); return m;
+}
+for (let i = 0; i < 8; i++) { rack(-1.6 + i * .62, -1.2, 1); rack(-1.6 + i * .62, 1.7, -1); }
+
+/* ---------------------------------------------------------------- cylinders & valves */
+const CZ = -3.0, CX = [-4.3, -3.55], CYL = [];
+const cylLabel = canvasTex(512, 256, (x, w, h) => {
+  x.fillStyle = '#f4f2ea'; x.fillRect(0, 0, w, h); x.strokeStyle = '#334'; x.lineWidth = 4; x.strokeRect(14, 14, w - 28, h - 28);
+  x.fillStyle = '#1b2a44'; x.font = '700 54px Arial'; x.textAlign = 'center'; x.fillText('FM-200', w / 2, 80);
+  x.font = '700 24px Arial'; x.fillText('CLEAN AGENT SYSTEM · HFC-227ea', w / 2, 118);
+  x.font = '400 17px Arial'; x.fillStyle = '#445';
+  ['SUPER-PRESSURISED WITH NITROGEN TO 25 BAR (360 PSI) @ 21°C', 'CONTENTS: HEPTAFLUOROPROPANE', 'DO NOT REMOVE ACTUATOR WHILE ARMED', 'NFPA 2001 · ISO 14520'].forEach((s, i) => x.fillText(s, w / 2, 152 + i * 24));
+});
+function gaugeTex() { return canvasTex(128, 128, (x, w) => { x.fillStyle = '#fff'; x.beginPath(); x.arc(64, 64, 60, 0, 7); x.fill();
+  x.strokeStyle = '#c1121f'; x.lineWidth = 10; x.beginPath(); x.arc(64, 64, 46, Math.PI * .75, Math.PI * 1.05); x.stroke();
+  x.strokeStyle = '#2c8a49'; x.beginPath(); x.arc(64, 64, 46, Math.PI * 1.8, Math.PI * 2.05); x.stroke();
+  x.fillStyle = '#222'; x.font = '700 16px Arial'; x.textAlign = 'center'; x.fillText('bar', 64, 100); }); }
+CX.forEach((cx, i) => {
+  const g = new THREE.Group(); g.position.set(cx, 0, CZ); scene.add(g);
+  mesh(new THREE.CylinderGeometry(.21, .21, 1.0, 40), MAT.red, 0, .62, 0, g);
+  const dome = new THREE.SphereGeometry(.21, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+  mesh(dome, MAT.red, 0, 1.12, 0, g).scale.y = .65;
+  mesh(dome, MAT.red, 0, .12, 0, g).scale.y = -.55;
+  mesh(new THREE.CylinderGeometry(.2, .19, .06, 32), MAT.red, 0, .03, 0, g);
+  const lab = mesh(new THREE.CylinderGeometry(.213, .213, .3, 40, 1, true, -1.05, 2.1), std(0xffffff, {map: cylLabel, roughness: .7}), 0, .72, 0, g); lab.castShadow = false;
+  [.5, .95].forEach(y => { const t = mesh(new THREE.TorusGeometry(.214, .012, 8, 40), MAT.dark, 0, y, 0, g); t.rotation.x = Math.PI / 2; });
+  mesh(new THREE.BoxGeometry(.04, .04, .28), MAT.dark, 0, .95, -.32, g);   // wall bracket
+  mesh(new THREE.CylinderGeometry(.06, .075, .1, 20), MAT.brass, 0, 1.29, 0, g);
+  mesh(new THREE.BoxGeometry(.17, .15, .17), MAT.brass, 0, 1.415, 0, g);
+  rod(v3(.08, 1.42, 0), v3(.17, 1.42, 0), .035, MAT.brass, g);              // outlet
+  const gt = gaugeTex(), gauge = mesh(new THREE.CylinderGeometry(.045, .045, .02, 24), [MAT.steel, std(0xffffff, {map: gt}), MAT.steel], -.02, 1.43, .095, g);
+  gauge.rotation.x = Math.PI / 2; gauge.material[1].map.rotation = 0;
+  const needle = mesh(new THREE.BoxGeometry(.004, .036, .003), MAT.black, 0, 0, 0, g); needle.geometry.translate(0, .016, 0); needle.position.set(-.02, 1.43, .107);
+  let act;
+  if (i === 0) {   // solenoid actuator
+    act = mesh(new THREE.CylinderGeometry(.05, .05, .15, 20), MAT.black, 0, 1.57, 0, g);
+    mesh(new THREE.CylinderGeometry(.035, .035, .03, 16), MAT.red, 0, 1.66, 0, g);
+  } else {         // pneumatic (pilot) actuator
+    act = mesh(new THREE.CylinderGeometry(.045, .05, .12, 20), MAT.brass, 0, 1.55, 0, g);
+  }
+  CYL.push({g, needle, act, x: cx});
+});
+// solenoid cable to the panel
+{ const c = new THREE.CatmullRomCurve3([v3(CX[0], 1.67, CZ), v3(CX[0], 2.05, CZ - .3), v3(CX[0], 2.35, -RZ + .06), v3(-RX + .06, 2.35, -RZ + .06), v3(-RX + .06, 2.35, -1.4), v3(-RX + .06, 1.86, -1.4)], false, 'centripetal', .1);
+  mesh(new THREE.TubeGeometry(c, 80, .008, 6), MAT.black); }
+// pilot hose master -> slave
+const pilotCurve = new THREE.CatmullRomCurve3([v3(CX[0] + .05, 1.56, CZ), v3(CX[0] + .2, 1.74, CZ + .06), v3(CX[1] - .2, 1.74, CZ + .06), v3(CX[1] - .045, 1.55, CZ)]);
+mesh(new THREE.TubeGeometry(pilotCurve, 40, .013, 8), MAT.dark);
+const pilotCore = new THREE.Mesh(new THREE.TubeGeometry(pilotCurve, 40, .016, 8), new THREE.MeshBasicMaterial({color: 0x7fe0ff, transparent: true, opacity: .9}));
+pilotCore.geometry.setDrawRange(0, 0); scene.add(pilotCore);
+
+/* ---------------------------------------------------------------- piping network */
+const MZ = -3.32, MY = 1.95, PY = 2.95, AZ = .25, NY = 2.66;
+const P = {
+  in0: v3(CX[0], MY, MZ), in1: v3(CX[1], MY, MZ), end: v3(-4.62, MY, MZ), out: v3(-2.6, MY, MZ), rise: v3(-2.6, PY, MZ),
+  a: v3(-2.6, PY, AZ), t1: v3(-.3, PY, AZ), e2: v3(2.9, PY, AZ), n1: v3(-.3, NY, AZ), n2: v3(2.9, NY, AZ)
+};
+const PR = .05;
+const segs = [[P.end, P.in0, true], [P.in0, P.in1], [P.in1, P.out], [P.out, P.rise], [P.rise, P.a], [P.a, P.t1], [P.t1, P.e2], [P.t1, P.n1], [P.e2, P.n2]];
+const pipeMeshes = [], cores = [];
+segs.forEach(([a, b, dead]) => {
+  pipeMeshes.push(rod(a, b, PR, pipeMat));
+  if (!dead) { const c = rod(a, b, PR * .62, coreMat, scene, true); c.castShadow = false; c.scale.y = 0; c.renderOrder = 5; cores.push({m: c, a, b, len: a.distanceTo(b), start: [Infinity, Infinity]}); }
+});
+[P.out, P.rise, P.a, P.e2].forEach(p => pipeMeshes.push(mesh(new THREE.SphereGeometry(PR * 1.25, 18, 12), pipeMat, p.x, p.y, p.z)));
+[P.t1, P.in0, P.in1].forEach(p => pipeMeshes.push(mesh(new THREE.SphereGeometry(PR * 1.35, 18, 12), pipeMat, p.x, p.y, p.z)));
+pipeMeshes.push(mesh(new THREE.CylinderGeometry(PR * 1.3, PR * 1.3, .05, 18), pipeMat, P.end.x - .02, MY, MZ)); pipeMeshes.at(-1).rotation.z = Math.PI / 2;
+// hangers
+[[-2.6, MZ], [-2.6, -1.5], [-2.6, -.2], [-1.2, AZ], [.9, AZ], [2.1, AZ]].forEach(([x, z]) => { rod(v3(x, PY + PR, z), v3(x, RH, z), .008, MAT.steel); });
+[-4.0, -3.0].forEach(x => rod(v3(x, MY, MZ - .05), v3(x, MY, -RZ), .012, MAT.steel));
+// check valves + flexible discharge hoses
+const hoses = [];
+CX.forEach((cx, i) => {
+  const cv = v3(cx, MY - .2, MZ);
+  mesh(new THREE.CylinderGeometry(.045, .045, .13, 18), MAT.brass, cx, MY - .12, MZ);
+  const curve = new THREE.CatmullRomCurve3([v3(cx + .17, 1.42, CZ), v3(cx + .32, 1.48, CZ - .05), v3(cx + .22, 1.68, MZ + .02), v3(cx, cv.y - .02, MZ)]);
+  mesh(new THREE.TubeGeometry(curve, 40, .028, 10), MAT.dark);
+  const core = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, .031, 10), new THREE.MeshBasicMaterial({color: 0xcff4ff, transparent: true, opacity: .75, depthWrite: false}));
+  core.geometry.setDrawRange(0, 0); scene.add(core);
+  hoses.push({curve, core, pts: curve.getSpacedPoints(24).concat([i === 0 ? P.in0 : P.in1])});
+});
+// nozzles
+const NOZ = [P.n1, P.n2].map(p => {
+  mesh(new THREE.CylinderGeometry(.04, .05, .1, 20), MAT.brass, p.x, p.y - .04, p.z);
+  const r = mesh(new THREE.TorusGeometry(.046, .008, 6, 24), MAT.black, p.x, p.y - .06, p.z); r.rotation.x = Math.PI / 2;
+  return {p: v3(p.x, p.y - .07, p.z), reach: Infinity, on: false};
+});
+
+/* gas paths: cylinder valve -> hose -> manifold -> ... -> nozzle */
+function makePath(pts) { const d = [0]; for (let i = 1; i < pts.length; i++) d.push(d[i - 1] + pts[i].distanceTo(pts[i - 1])); return {pts, d, len: d.at(-1)}; }
+function at(path, s, out) {
+  const d = path.d; let i = 1; while (i < d.length - 1 && d[i] < s) i++;
+  const t = clamp((s - d[i - 1]) / (d[i] - d[i - 1] || 1), 0, 1); return out.copy(path.pts[i - 1]).lerp(path.pts[i], t);
+}
+const PATHS = [];   // {c, n, path}
+CX.forEach((cx, c) => {
+  const head = hoses[c].pts.concat(c === 0 ? [P.in1] : []).concat([P.out, P.rise, P.a, P.t1]);
+  [[P.n1], [P.e2, P.n2]].forEach((tail, n) => {
+    const path = makePath(head.concat(tail)); PATHS.push({c, n, path});
+    NOZ[n]['L' + c] = path.len;
+    // record where each straight core starts along this path
+    for (let i = 1; i < path.pts.length; i++) cores.forEach(co => { if (co.a === path.pts[i - 1] && co.b === path.pts[i]) co.start[c] = Math.min(co.start[c], path.d[i - 1]); });
+  });
+  hoses[c].len = makePath(hoses[c].pts).len;
+});
+
+/* ---------------------------------------------------------------- detectors & wall devices */
+const DET = [v3(.6, RH, -.9), v3(2.2, RH, 1.3)].map((p, i) => {
+  mesh(new THREE.CylinderGeometry(.075, .075, .025, 24), MAT.white, p.x, p.y - .013, p.z);
+  mesh(new THREE.SphereGeometry(.06, 24, 10, 0, 7, 0, Math.PI / 2), MAT.white, p.x, p.y - .025, p.z).scale.y = -.55;
+  const led = mesh(new THREE.SphereGeometry(.012, 10, 8), new THREE.MeshBasicMaterial({color: 0x330000}), p.x + .05, p.y - .04, p.z);
+  return {p, led, on: false};
+});
+const WX = -RX + .02;
+const panelTex = canvasTex(256, 192, () => {});
+const panel = mesh(new THREE.BoxGeometry(.08, .62, .46), [std(0xffffff, {map: panelTex, emissive: 0xffffff, emissiveMap: panelTex, emissiveIntensity: .35}), MAT.dark, std(0xd7d9db), std(0xd7d9db), std(0xd7d9db), std(0xd7d9db)], WX + .04, 1.55, -1.4);
+const manual = mesh(new THREE.BoxGeometry(.06, .17, .13), MAT.yellow, WX + .03, 1.35, .15);
+const abortSw = mesh(new THREE.BoxGeometry(.06, .17, .13), MAT.blue, WX + .03, 1.35, .55);
+const bellMat = std(0xc1121f, {emissive: 0xff2020, emissiveIntensity: 0}), bell = mesh(new THREE.CylinderGeometry(.11, .11, .05, 28), bellMat, WX + .03, 2.45, -.5); bell.rotation.z = Math.PI / 2;
+const strobeMat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0}), sounder = mesh(new THREE.BoxGeometry(.08, .14, .16), MAT.red, WX + .04, 2.45, .35);
+mesh(new THREE.BoxGeometry(.03, .06, .12), strobeMat, WX + .095, 2.47, .35);
+const signTex = canvasTex(512, 160, (x, w, h) => { x.fillStyle = '#300'; x.fillRect(0, 0, w, h); x.fillStyle = '#ff4a3a'; x.font = '700 50px Arial'; x.textAlign = 'center'; x.fillText('GAS RELEASED', w / 2, 70); x.font = '700 34px Arial'; x.fillText('DO NOT ENTER', w / 2, 125); });
+const signMat = std(0xffffff, {map: signTex, emissive: 0xffffff, emissiveMap: signTex, emissiveIntensity: 0});
+const sign = mesh(new THREE.BoxGeometry(.05, .17, .52), [signMat, MAT.dark, MAT.dark, MAT.dark, MAT.dark, MAT.dark], WX + .03, 2.6, 1.9);
+const strobeLight = new THREE.PointLight(0xffffff, 0, 6); strobeLight.position.set(WX + .3, 2.45, .35); scene.add(strobeLight);
+
+/* labels */
+label('Master cylinder', v3(CX[0] - .05, .35, CZ + .45), .1, 'with solenoid');
+label('Slave cylinder', v3(CX[1] + .12, .2, CZ + .45), .1);
+label('Solenoid actuator', v3(CX[0] - .2, 1.85, CZ + .25), .085);
+label('Pilot hose', v3(-3.92, 1.9, CZ + .35), .085);
+label('Discharge hose', v3(CX[1] + .55, 1.45, CZ + .1), .085);
+label('Check valve + manifold', v3(-3.5, 2.18, MZ + .1), .09);
+label('Discharge piping', v3(-2.35, 2.7, -1.5), .1);
+label('360° nozzle', v3(P.n1.x, 2.4, AZ), .1);
+label('360° nozzle', v3(P.n2.x, 2.4, AZ), .1);
+label('Smoke detector', v3(DET[0].p.x, 3.4, DET[0].p.z), .085, 'Zone 1');
+label('Smoke detector', v3(DET[1].p.x, 3.4, DET[1].p.z), .085, 'Zone 2');
+label('Release panel', v3(WX + .1, 2.0, -1.4), .1);
+label('Manual release', v3(WX + .1, 1.12, .0), .08);
+label('Abort', v3(WX + .1, 1.12, .62), .08);
+label('Bell · sounder & strobe', v3(WX + .1, 2.72, -.05), .08);
+
+/* ---------------------------------------------------------------- particles */
+const PV = `attribute float size; attribute float alpha; attribute vec3 col; varying float vA; varying vec3 vC; uniform float uS;
+void main(){ vA=alpha; vC=col; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=size*uS/-mv.z; gl_Position=projectionMatrix*mv; }`;
+const PF = `varying float vA; varying vec3 vC; void main(){ float d=length(gl_PointCoord-.5); float a=smoothstep(.5,.0,d); if(a*vA<.003) discard; gl_FragColor=vec4(vC,a*vA); }`;
+const pools = [];
+class Pool {
+  constructor(n, additive, order) {
+    Object.assign(this, {n, p: new Float32Array(n * 3), v: new Float32Array(n * 3), c: new Float32Array(n * 3), sz: new Float32Array(n), al: new Float32Array(n),
+      age: new Float32Array(n), life: new Float32Array(n), s0: new Float32Array(n), s1: new Float32Array(n), a0: new Float32Array(n),
+      drag: new Float32Array(n), buoy: new Float32Array(n), path: new Int16Array(n).fill(-1), d: new Float32Array(n), j: new Float32Array(n * 3), cur: 0});
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(this.p, 3)); g.setAttribute('col', new THREE.BufferAttribute(this.c, 3));
+    g.setAttribute('size', new THREE.BufferAttribute(this.sz, 1)); g.setAttribute('alpha', new THREE.BufferAttribute(this.al, 1));
+    this.mat = new THREE.ShaderMaterial({vertexShader: PV, fragmentShader: PF, uniforms: {uS: {value: 400}}, transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending});
+    this.pts = new THREE.Points(g, this.mat); this.pts.frustumCulled = false; this.pts.renderOrder = order; scene.add(this.pts); this.g = g; pools.push(this);
+  }
+  spawn(o) {
+    let i = this.cur, k = 0; while (this.life[i] > 0 && k++ < 64) i = (i + 1) % this.n; this.cur = (i + 1) % this.n;
+    const i3 = i * 3; this.p[i3] = o.x; this.p[i3 + 1] = o.y; this.p[i3 + 2] = o.z;
+    this.v[i3] = o.vx || 0; this.v[i3 + 1] = o.vy || 0; this.v[i3 + 2] = o.vz || 0;
+    this.c[i3] = o.c[0]; this.c[i3 + 1] = o.c[1]; this.c[i3 + 2] = o.c[2];
+    this.age[i] = 0; this.life[i] = o.life; this.s0[i] = o.s0; this.s1[i] = o.s1; this.a0[i] = o.a; this.drag[i] = o.drag || 0; this.buoy[i] = o.buoy || 0;
+    this.path[i] = o.path ?? -1; this.d[i] = 0; this.spd = o.spd;
+    if (o.path != null) { this.j[i3] = (Math.random() - .5) * .05; this.j[i3 + 1] = (Math.random() - .5) * .05; this.j[i3 + 2] = (Math.random() - .5) * .05; this.d[i] = o.d0 || 0; }
+  }
+  update(dt) {
+    const tmp = Pool.tmp || (Pool.tmp = new THREE.Vector3());
+    for (let i = 0; i < this.n; i++) {
+      if (this.life[i] <= 0) { this.al[i] = 0; continue; }
+      const i3 = i * 3; this.age[i] += dt; const k = this.age[i] / this.life[i];
+      if (k >= 1) { this.life[i] = 0; this.al[i] = 0; continue; }
+      this.sz[i] = this.s0[i] + (this.s1[i] - this.s0[i]) * k;
+      this.al[i] = this.a0[i] * Math.min(1, k * 8) * (1 - k);
+      if (this.path[i] >= 0) {
+        const pa = PATHS[this.path[i]].path; this.d[i] += V * dt;
+        if (this.d[i] >= pa.len) { this.life[i] = 0; this.al[i] = 0; continue; }
+        at(pa, this.d[i], tmp); this.p[i3] = tmp.x + this.j[i3]; this.p[i3 + 1] = tmp.y + this.j[i3 + 1]; this.p[i3 + 2] = tmp.z + this.j[i3 + 2];
+        this.al[i] = this.a0[i];
+        continue;
+      }
+      const f = Math.exp(-this.drag[i] * dt); this.v[i3] *= f; this.v[i3 + 1] = this.v[i3 + 1] * f + this.buoy[i] * dt; this.v[i3 + 2] *= f;
+      let x = this.p[i3] + this.v[i3] * dt, y = this.p[i3 + 1] + this.v[i3 + 1] * dt, z = this.p[i3 + 2] + this.v[i3 + 2] * dt;
+      if (x < -RX + .1) { x = -RX + .1; this.v[i3] *= -.3; } if (x > RX - .1) { x = RX - .1; this.v[i3] *= -.3; }
+      if (z < -RZ + .1) { z = -RZ + .1; this.v[i3 + 2] *= -.3; } if (z > RZ - .1) { z = RZ - .1; this.v[i3 + 2] *= -.3; }
+      if (y > RH - .08) { y = RH - .08; this.v[i3 + 1] *= -.2; } if (y < .05) { y = .05; this.v[i3 + 1] *= -.2; }
+      this.p[i3] = x; this.p[i3 + 1] = y; this.p[i3 + 2] = z;
+    }
+    for (const a of ['position', 'size', 'alpha', 'col']) this.g.attributes[a].needsUpdate = true;
+  }
+}
+const fog = new Pool(6000, false, 8), smoke = new Pool(900, false, 7), glow = new Pool(3200, true, 9);
+const fogBox = mesh(new THREE.BoxGeometry(RX * 2 - .05, RH - .02, RZ * 2 - .05), new THREE.MeshBasicMaterial({color: 0xeaf6ff, transparent: true, opacity: 0, depthWrite: false}), 0, RH / 2, 0);
+fogBox.castShadow = fogBox.receiveShadow = false; fogBox.renderOrder = 6;
+
+/* fire in a rack */
+const FIRE = v3(1.5, .35, -.6);
+const fireLight = new THREE.PointLight(0xff7a2a, 0, 5); fireLight.position.copy(FIRE).add(v3(0, .3, .3)); scene.add(fireLight);
+
+/* ---------------------------------------------------------------- simulation state */
+const PH = {normal: ['Standby', ''], fire: ['Fire in rack', 'fire'], alarm1: ['First alarm · Zone 1', 'alm'], predis: ['Pre-discharge', 'alm'], release: ['Releasing agent', 'rel'], done: ['Fire out · hold time', 'ok']};
+const S = {};
+function resetState() {
+  Object.assign(S, {phase: 'normal', t: 0, tPh: 0, fire: 0, burning: false, fireOut: false, cd: 0, abort: false, tRel: -1, open: [Infinity, Infinity], conc: 0, press: [P0, P0], camStep: -1, lastCap: ''});
+  NOZ.forEach(n => { n.reach = Infinity; n.on = false; });
+  cores.forEach(c => c.m.scale.y = 1e-4); hoses.forEach(h => h.core.geometry.setDrawRange(0, 0)); pilotCore.geometry.setDrawRange(0, 0);
+  pools.forEach(p => { p.life.fill(0); p.al.fill(0); p.g.attributes.alpha.needsUpdate = true; });
+  DET.forEach(d => d.on = false); fogBox.material.opacity = 0;
+}
+resetState();
+let speed = 1, delay = 10, autoCam = true;
+const setPhase = p => { S.phase = p; S.tPh = 0; };
+
+function startFire() { if (S.phase !== 'normal') return; setPhase('fire'); S.fire = .05; S.burning = true; }
+function startCountdown() { if (S.phase === 'normal' || S.phase === 'fire' || S.phase === 'alarm1') { setPhase('predis'); S.cd = delay; } }
+function release() { if (S.phase === 'release' || S.phase === 'done') return; setPhase('release'); S.tRel = 0; S.open = [.3, .95];
+  NOZ.forEach((n, i) => n.reach = Math.min(S.open[0] + n.L0 / V, S.open[1] + n.L1 / V));
+  if (!xray) setXray(true);
+}
+
+function step(dt) {
+  S.t += dt; S.tPh += dt;
+  // fire growth & smoke
+  if (S.burning && !S.fireOut) {
+    if (S.conc > 4.2) S.fire -= dt * .45; else S.fire = Math.min(1, S.fire + dt * .12);
+    if (S.fire <= 0) { S.fire = 0; S.fireOut = true; }
+  }
+  if (S.phase === 'fire' && S.tPh > 5) { DET[0].on = true; setPhase('alarm1'); }
+  if (S.phase === 'alarm1' && S.tPh > 4.5) { DET[1].on = true; setPhase('predis'); S.cd = delay; }
+  if (S.phase === 'predis') { if (!S.abort) S.cd -= dt; if (S.cd <= 0) { S.cd = 0; release(); } }
+  if (S.phase === 'release') {
+    S.tRel += dt; const tr = S.tRel;
+    pilotCore.geometry.setDrawRange(0, Math.floor(pilotCore.geometry.index.count * clamp((tr - S.open[0]) / .55, 0, 1) / 6) * 6);
+    for (let c = 0; c < 2; c++) {
+      const since = tr - S.open[c], front = since * V;
+      if (since > 0) {
+        S.press[c] = P0 - (P0 - PEND) * sstep(0, 9.2, since) - Math.sin(Math.min(since, 1) * Math.PI) * .8;
+        const h = hoses[c], g = h.core.geometry; g.setDrawRange(0, Math.floor(g.index.count * clamp(front / h.len, 0, 1) / 6) * 6);
+        if (since < 9.4) for (let k = 0, nk = Math.round(240 * dt + Math.random() - .5); k < nk; k++) { const pi = PATHS.findIndex(p => p.c === c && p.n === (Math.random() < .5 ? 0 : 1)); glow.spawn({x: 0, y: 0, z: 0, path: pi, life: 30, s0: .06, s1: .06, a: .75, c: [.55, .9, 1], d0: Math.random() * dt * V}); }
+      }
+    }
+    cores.forEach(co => { let f = 0; for (let c = 0; c < 2; c++) f = Math.max(f, ((S.tRel - S.open[c]) * V - co.start[c]) / co.len); co.m.scale.y = co.len * clamp(f, 0, 1) + 1e-4; });
+    // nozzles
+    let firstReach = Math.min(...NOZ.map(n => n.reach));
+    NOZ.forEach(n => {
+      const since = tr - n.reach; n.on = since > 0 && since < 9.2;
+      if (n.on) {
+        const rate = Math.round((since < .4 ? since / .4 : 1) * (since > 7.5 ? (9.2 - since) / 1.7 : 1) * 12 * dt * 60 + Math.random() - .5);
+        for (let k = 0; k < rate; k++) { const a = Math.random() * Math.PI * 2, sp = 2.5 + Math.random() * 4.5;
+          fog.spawn({x: n.p.x, y: n.p.y, z: n.p.z, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: -.4 - Math.random() * 1.6, drag: 1.1 + Math.random() * .8, buoy: -.25,
+            life: 2.5 + Math.random() * 2, s0: .08, s1: .9 + Math.random() * .9, a: .19, c: [.96, .98, 1]}); }
+        for (let k = 0; k < 2; k++) glow.spawn({x: n.p.x + (Math.random() - .5) * .05, y: n.p.y, z: n.p.z + (Math.random() - .5) * .05, vx: (Math.random() - .5) * 3, vz: (Math.random() - .5) * 3, vy: -.5, drag: 3, life: .35, s0: .12, s1: .35, a: .5, c: [.7, .95, 1]});
+      }
+    });
+    if (tr > firstReach) S.conc = Math.min(CONC, CONC / (1 - Math.exp(-3.1)) * (1 - Math.exp(-(tr - firstReach) / 3)));
+    if (tr > firstReach + 10.5 && (S.fireOut || !S.burning)) setPhase('done');
+  }
+  if (S.conc > 0 && Math.random() < dt * 40) {   // lingering mist so the room looks filled
+    const r = S.conc / CONC;
+    fog.spawn({x: (Math.random() * 2 - 1) * (RX - .3), y: Math.random() * RH * .95, z: (Math.random() * 2 - 1) * (RZ - .3), vx: (Math.random() - .5) * .2, vz: (Math.random() - .5) * .2, life: 5, s0: 1.2, s1: 2.2, a: .07 * r, c: [.95, .97, 1]});
+  }
+  fogBox.material.opacity = .14 * S.conc / CONC;
+  // fire particles
+  if (S.fire > 0) {
+    const n = Math.ceil(S.fire * 3 * dt * 60);
+    for (let k = 0; k < n; k++) glow.spawn({x: FIRE.x + (Math.random() - .5) * .3 * S.fire, y: FIRE.y, z: FIRE.z + Math.random() * .1, vx: (Math.random() - .5) * .2, vy: .8 + Math.random() * .8, vz: .05, drag: 1.5,
+      life: .45 + Math.random() * .3, s0: .25 * S.fire + .05, s1: .02, a: .55, c: Math.random() < .5 ? [1, .45, .1] : [1, .75, .25]});
+    if (Math.random() < S.fire * dt * 30) smoke.spawn({x: FIRE.x, y: FIRE.y + .5, z: FIRE.z + .05, vx: (Math.random() - .5) * .4, vy: .9, vz: (Math.random() - .3) * .4, drag: .5, buoy: .3,
+      life: 7, s0: .3, s1: 1.4, a: .28, c: [.33, .34, .36]});
+  }
+}
+
+/* ---------------------------------------------------------------- panel screen */
+let panelKey = '';
+function drawPanel() {
+  const st = S.phase, cd = Math.ceil(S.cd);
+  const L = st === 'normal' || st === 'fire' ? ['SYSTEM NORMAL', 'AGENT  FM-200', 'CYL 25.0 bar'] : st === 'alarm1' ? ['FIRE ALARM', 'ZONE 1  1ST STAGE', 'BELL ON'] :
+    st === 'predis' ? (S.abort ? ['PRE-DISCHARGE', 'ABORT HELD', 'COUNTDOWN PAUSED'] : ['PRE-DISCHARGE', 'ZONE 1 + 2', 'RELEASE IN ' + String(cd).padStart(2, '0') + ' s']) :
+    ['AGENT RELEASED', 'PRESSURE SW ON', 'DO NOT ENTER'];
+  const key = L.join('|') + (S.t * 2 | 0) % 2; if (key === panelKey) return; panelKey = key;
+  const {x, c} = panelTex.userData, w = c.width, h = c.height;
+  x.fillStyle = '#d7d9db'; x.fillRect(0, 0, w, h); x.fillStyle = '#1c2a1c'; x.fillRect(22, 18, w - 44, 92);
+  x.fillStyle = st === 'normal' || st === 'fire' ? '#9eff9e' : st === 'release' || st === 'done' ? '#7fe0ff' : '#ffcf5a';
+  x.font = '700 21px monospace'; L.forEach((s, i) => x.fillText(s, 32, 44 + i * 26));
+  const blink = (S.t * 2 | 0) % 2;
+  [['POWER', '#2fbf5f', 1], ['FIRE', '#ff3b30', st !== 'normal' && st !== 'fire' && blink], ['PRE-DIS', '#ffb020', st === 'predis'], ['RELEASED', '#5cc3f5', st === 'release' || st === 'done']].forEach(([t, col, on], i) => {
+    x.fillStyle = on ? col : '#5a5f63'; x.beginPath(); x.arc(36 + i * 60, 136, 9, 0, 7); x.fill(); x.fillStyle = '#333'; x.font = '700 11px Arial'; x.textAlign = 'center'; x.fillText(t, 36 + i * 60, 164); x.textAlign = 'left';
+  });
+  panelTex.needsUpdate = true;
+}
+
+/* ---------------------------------------------------------------- camera */
+const CAM = {
+  overview: [v3(6.2, 5.6, 3.4), v3(-1.4, .9, -.9)], cyl: [v3(-2.1, 2.05, -.9), v3(-3.85, 1.4, -3.1)],
+  pipe: [v3(1.4, 4.4, 4.6), v3(-1.6, 2.6, -1.2)], noz: [v3(1.3, 1.75, 2.9), v3(-.3, 2.45, .25)]
+};
+let tween = null, camName = 'overview';
+function goCam(name, dur = 1.6) {
+  camName = name; $$('.cams button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cam === name));
+  tween = {p0: camera.position.clone(), t0: controls.target.clone(), p1: CAM[name][0], t1: CAM[name][1], k: 0, dur};
+}
+camera.position.copy(CAM.overview[0]); controls.target.copy(CAM.overview[1]);
+controls.addEventListener('start', () => { tween = null; if (S.phase !== 'normal') autoCam = false, setSw('#s-auto', false); });
+function autoCamera() {
+  if (!autoCam) return; let want = -1;
+  if (S.phase === 'release') { const fr = Math.min(...NOZ.map(n => n.reach)); want = S.tRel < 1.6 ? 1 : S.tRel < fr - .2 ? 2 : S.tRel < fr + 6 ? 3 : 4; }
+  else if (S.phase === 'done') want = 4; else if (S.phase === 'predis') want = 0;
+  if (want !== S.camStep && want >= 0) { S.camStep = want; goCam(['overview', 'cyl', 'pipe', 'noz', 'overview'][want], want === 2 ? 2.2 : 1.6); }
+}
+
+/* ---------------------------------------------------------------- UI */
+const capEl = $('#cap'), stepEls = $$('#steps li');
+function caption() {
+  const st = S.phase; let c = '', s = 0;
+  if (st === 'normal') c = 'This is the FM200 clean agent system.<small>Two cylinders, a manifold and red discharge piping to two 360° nozzles. Press <b>Start fire</b>.</small>';
+  else if (st === 'fire') c = 'A fire starts inside a server rack.<small>Smoke rises towards the ceiling detectors.</small>';
+  else if (st === 'alarm1') { s = 1; c = 'Zone 1 smoke detector in alarm — first stage.<small>The bell rings. One detector alone does not release the gas.</small>'; }
+  else if (st === 'predis') { s = 2; c = S.abort ? 'Abort switch held — countdown paused.<small>Release the abort switch and the countdown carries on.</small>' : 'Zone 2 confirms the fire — second stage.<small>Sounder & strobe on, HVAC and dampers close. Leave the room: release in ' + Math.ceil(S.cd) + ' s.</small>'; }
+  else if (st === 'release') {
+    const fr = Math.min(...NOZ.map(n => n.reach));
+    if (S.tRel < .95) { s = 3; c = 'The panel fires the solenoid on the master cylinder.<small>Its valve opens, and pilot pressure through the small hose opens the slave cylinder.</small>'; }
+    else if (S.tRel < fr) { s = 4; c = 'The agent flows from the cylinders to the nozzles.<small>Nitrogen pressure pushes liquid FM200 through the discharge hoses, check valves, manifold and pipe network.</small>'; }
+    else if (S.tRel < fr + 9.2) { s = 5; c = 'Discharge at the nozzles.<small>The liquid flashes into gas and spreads across the whole room. Cylinder pressure falls as it empties.</small>'; }
+    else { s = 6; c = 'Discharge complete.<small>' + (!S.burning ? 'The room is now at design concentration.' : S.fireOut ? 'The fire is out.' : 'The fire is being put out.') + '</small>'; }
+  } else if (st === 'done') { s = 6; c = (S.burning ? 'Fire out — about' : 'Discharge complete — about') + ' 7% FM200 in the room.<small>It cools the flame chemically and by heat absorption. Oxygen stays breathable. Keep the room closed, then ventilate before going back in.</small>'; }
+  if (c !== S.lastCap) { capEl.innerHTML = c; S.lastCap = c; }
+  stepEls.forEach((li, i) => { li.className = i < s ? 'done' : i === s && st !== 'normal' ? 'now' : ''; });
+  if (st === 'normal') stepEls[0].className = 'now';
+}
+function hud() {
+  $('#h-ph').textContent = PH[S.phase][0]; $('#h-ph').className = 'ph ' + PH[S.phase][1];
+  $('#h-cdr').hidden = S.phase !== 'predis'; $('#h-cd').textContent = S.abort ? 'paused' : Math.ceil(S.cd) + ' s';
+  for (let c = 0; c < 2; c++) { $('#h-p' + c).textContent = S.press[c].toFixed(1) + ' bar'; $('#m-p' + c).style.width = (S.press[c] / P0 * 100) + '%'; }
+  $('#h-c').textContent = S.conc.toFixed(1) + ' %'; $('#m-c').style.width = (S.conc / 10 * 100) + '%';
+  const fr = Math.min(...NOZ.map(n => n.reach));
+  $('#h-t').textContent = S.tRel >= 0 && S.tRel > fr ? Math.min(10, S.tRel - fr).toFixed(1) + ' / 10 s' : '–';
+  $('#b-fire').disabled = S.phase !== 'normal';
+  $('#b-man').disabled = !['normal', 'fire', 'alarm1'].includes(S.phase);
+  $('#b-dis').disabled = S.phase === 'release' || S.phase === 'done';
+  $('#b-abort').disabled = S.phase !== 'predis'; $('#b-abort').setAttribute('aria-pressed', S.abort && S.phase === 'predis');
+}
+function setSw(sel, on) { $(sel).setAttribute('aria-checked', on); }
+let xray = false;
+function setXray(on) { xray = on; setSw('#s-xray', on); pipeMat.opacity = on ? .3 : 1; pipeMat.depthWrite = !on; pipeMat.needsUpdate = true; pipeMeshes.forEach(m => m.castShadow = !on); }
+$('#b-fire').onclick = startFire;
+$('#b-man').onclick = () => { if (S.phase === 'normal') S.fire = 0; startCountdown(); };
+$('#b-dis').onclick = release;
+$('#b-abort').onclick = () => { S.abort = !S.abort; };
+$('#b-reset').onclick = () => { resetState(); autoCam = true; setSw('#s-auto', true); setXray(false); goCam('overview'); };
+$$('#g-speed button').forEach(b => b.onclick = () => { speed = +b.dataset.v; $$('#g-speed button').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+$$('#g-delay button').forEach(b => b.onclick = () => { delay = +b.dataset.v; $$('#g-delay button').forEach(x => x.setAttribute('aria-pressed', x === b)); if (S.phase === 'predis') S.cd = Math.min(S.cd, delay); });
+$('#s-xray').onclick = () => setXray(!xray);
+$('#s-lab').onclick = e => { const on = e.currentTarget.getAttribute('aria-checked') !== 'true'; setSw('#s-lab', on); labels.forEach(l => l.visible = on); };
+$('#s-wall').onclick = e => { const on = e.currentTarget.getAttribute('aria-checked') !== 'true'; setSw('#s-wall', on); walls.visible = on; };
+$('#s-auto').onclick = e => { autoCam = e.currentTarget.getAttribute('aria-checked') !== 'true'; setSw('#s-auto', autoCam); S.camStep = -1; };
+$$('.cams button').forEach(b => b.onclick = () => { autoCam = false; setSw('#s-auto', false); goCam(b.dataset.cam); });
+
+/* ---------------------------------------------------------------- loop */
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  const s = h * renderer.getPixelRatio() / (2 * Math.tan(camera.fov * Math.PI / 360)); pools.forEach(p => p.mat.uniforms.uS.value = s);
+}
+new ResizeObserver(resize).observe(stage); resize();
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const rdt = Math.min(.05, (now - last) / 1000); last = now;
+  if (!active || document.hidden || !stage.clientWidth) return;
+  const dt = rdt * speed;
+  step(dt); pools.forEach(p => p.update(dt));
+  // devices
+  const blink = (S.t * 3 | 0) % 2 === 0;
+  DET.forEach(d => d.led.material.color.setHex(d.on ? (blink ? 0xff2a1a : 0x550000) : ((S.t * .5 | 0) % 4 === 0 ? 0x22aa33 : 0x0a2a0e)));
+  const alarm = S.phase !== 'normal' && S.phase !== 'fire';
+  bellMat.emissiveIntensity = alarm && !S.fireOut ? (Math.sin(S.t * 30) > 0 ? .9 : .2) : 0;
+  const stro = (S.phase === 'predis' || S.phase === 'release') && (S.t % .9) < .08;
+  strobeMat.emissiveIntensity = stro ? 3 : 0; strobeLight.intensity = stro ? 25 : 0;
+  signMat.emissiveIntensity = S.phase === 'release' || S.phase === 'done' ? (blink ? 1.1 : .6) : 0;
+  fireLight.intensity = S.fire * (8 + Math.random() * 5);
+  CYL.forEach((c, i) => { c.needle.rotation.z = -(S.press[i] / 42) * Math.PI * 1.5 + Math.PI * .75;
+    c.act.material = i === 0 && S.tRel >= 0 && S.tRel < .4 ? (blink ? MAT.yellow : MAT.black) : i === 0 ? MAT.black : MAT.brass; });
+  racks.forEach(r => { r.next -= rdt; if (r.next < 0) { r.next = .3 + Math.random() * 1.2; r.k ^= 1; const mats = r.m.material; mats[r.fi] = r.front[r.k]; } });
+  drawPanel(); caption(); hud(); autoCamera();
+  if (tween) { tween.k = Math.min(1, tween.k + rdt / tween.dur); const e = ease(tween.k);
+    camera.position.lerpVectors(tween.p0, tween.p1, e); controls.target.lerpVectors(tween.t0, tween.t1, e); if (tween.k >= 1) tween = null; }
+  controls.update(); renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+window.FMAPI = {reset: () => $('#b-reset').click(), release, startFire};
+</script>
+<script>setTimeout(function(){var l=document.getElementById('load');if(l)l.textContent='The 3D view could not load. It needs WebGL and an internet connection to fetch three.js.'},9000)</script>
+</body>
+</html>
